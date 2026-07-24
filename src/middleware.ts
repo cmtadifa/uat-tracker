@@ -1,13 +1,13 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { verifyAdminSession } from '@/lib/admin/session'
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const isLoginPage = request.nextUrl.pathname === '/admin/login'
   const isAdminPath = request.nextUrl.pathname.startsWith('/admin')
 
   if (isAdminPath && !isLoginPage) {
     const sessionCookie = request.cookies.get('uat_admin_session')?.value
-    const session = sessionCookie ? verifyAdminSession(sessionCookie) : null
+    const session = sessionCookie ? await verifyAdminSession(sessionCookie) : null
     if (!session) {
       return NextResponse.redirect(new URL('/admin/login', request.url))
     }

@@ -7,11 +7,11 @@ import { signAdminSession, verifyAdminPassword } from '@/lib/admin/session'
 export async function signInAction(formData: FormData) {
   const password = String(formData.get('password') ?? '')
 
-  if (!verifyAdminPassword(password)) {
+  if (!(await verifyAdminPassword(password))) {
     redirect(`/admin/login?error=${encodeURIComponent('Incorrect password.')}`)
   }
 
-  const sessionToken = signAdminSession({ iat: Date.now() })
+  const sessionToken = await signAdminSession({ iat: Date.now() })
   const cookieStore = await cookies()
   cookieStore.set('uat_admin_session', sessionToken, {
     httpOnly: true,

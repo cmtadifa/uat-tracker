@@ -1,4 +1,3 @@
-import { createHmac, timingSafeEqual } from 'crypto'
 import { cookies } from 'next/headers'
 
 export interface AdminSessionPayload {
@@ -11,26 +10,58 @@ function getSecret(): string {
   return secret
 }
 
-function sign(data: string): string {
-  return createHmac('sha256', getSecret()).update(data).digest('base64url')
+async function getHmacKey(secret: string): Promise<CryptoKey> {
+  return crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign', 'verify']
+  )
 }
 
-export function signAdminSession(payload: AdminSessionPayload): string {
+function toBase64Url(buffer: ArrayBuffer): string {
+  return Buffer.from(buffer).toString('base64url')
+}
+
+function fromBase64Url(value: string): Uint8Array {
+  return new Uint8Array(Buffer.from(value, 'base64url'))
+}
+
+function timingSafeEqualBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false
+  let diff = 0
+  for (let i = 0; i < a.length; i++) {
+    diff |= a[i] ^ b[i]
+  }
+  return diff === 0
+}
+
+async function sign(data: string): Promise<string> {
+  const key = await getHmacKey(getSecret())
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data))
+  return toBase64Url(signature)
+}
+
+export async function signAdminSession(payload: AdminSessionPayload): Promise<string> {
   const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url')
-  const signature = sign(encodedPayload)
+  const signature = await sign(encodedPayload)
   return `${encodedPayload}.${signature}`
 }
 
-export function verifyAdminSession(token: string): AdminSessionPayload | null {
+export async function verifyAdminSession(token: string): Promise<AdminSessionPayload | null> {
   const parts = token.split('.')
   if (parts.length !== 2) return null
   const [encodedPayload, signature] = parts
 
-  const expectedSignature = sign(encodedPayload)
-  const signatureBuffer = Buffer.from(signature)
-  const expectedBuffer = Buffer.from(expectedSignature)
-  if (signatureBuffer.length !== expectedBuffer.length) return null
-  if (!timingSafeEqual(signatureBuffer, expectedBuffer)) return null
+  const key = await getHmacKey(getSecret())
+  let valid: boolean
+  try {
+    valid = await crypto.subtle.verify('HMAC', key, fromBase64Url(signature), new TextEncoder().encode(encodedPayload))
+  } catch {
+    return null
+  }
+  if (!valid) return null
 
   try {
     const decoded = Buffer.from(encodedPayload, 'base64url').toString('utf-8')
@@ -42,17 +73,16 @@ export function verifyAdminSession(token: string): AdminSessionPayload | null {
   }
 }
 
-export function verifyAdminPassword(submitted: string): boolean {
+export async function verifyAdminPassword(submitted: string): Promise<boolean> {
   const expected = process.env.ADMIN_PASSWORD
   if (!expected) throw new Error('ADMIN_PASSWORD is not set')
-  const submittedBuffer = Buffer.from(submitted)
-  const expectedBuffer = Buffer.from(expected)
-  if (submittedBuffer.length !== expectedBuffer.length) return false
-  return timingSafeEqual(submittedBuffer, expectedBuffer)
+  const submittedHash = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(submitted)))
+  const expectedHash = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(expected)))
+  return timingSafeEqualBytes(submittedHash, expectedHash)
 }
 
 export async function requireAdminSession(): Promise<boolean> {
   const cookieStore = await cookies()
   const sessionCookie = cookieStore.get('uat_admin_session')?.value
-  return sessionCookie !== undefined && verifyAdminSession(sessionCookie) !== null
+  return sessionCookie !== undefined && (await verifyAdminSession(sessionCookie)) !== null
 }

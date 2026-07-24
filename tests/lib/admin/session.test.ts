@@ -6,19 +6,19 @@ beforeAll(() => {
 })
 
 describe('admin session cookie', () => {
-  it('round-trips a signed payload', () => {
-    const token = signAdminSession({ iat: 1000 })
-    expect(verifyAdminSession(token)).toEqual({ iat: 1000 })
+  it('round-trips a signed payload', async () => {
+    const token = await signAdminSession({ iat: 1000 })
+    expect(await verifyAdminSession(token)).toEqual({ iat: 1000 })
   })
 
-  it('rejects a tampered payload', () => {
-    const token = signAdminSession({ iat: 1000 })
+  it('rejects a tampered payload', async () => {
+    const token = await signAdminSession({ iat: 1000 })
     const [, signature] = token.split('.')
     const tamperedPayload = Buffer.from(JSON.stringify({ iat: 999999 })).toString('base64url')
-    expect(verifyAdminSession(`${tamperedPayload}.${signature}`)).toBeNull()
+    expect(await verifyAdminSession(`${tamperedPayload}.${signature}`)).toBeNull()
   })
 
-  it('rejects a malformed token', () => {
-    expect(verifyAdminSession('not-a-valid-token')).toBeNull()
+  it('rejects a malformed token', async () => {
+    expect(await verifyAdminSession('not-a-valid-token')).toBeNull()
   })
 })
