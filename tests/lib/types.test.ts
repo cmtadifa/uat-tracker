@@ -18,7 +18,7 @@ describe('shared types', () => {
   it('a Result object embeds its screenshots directly', () => {
     const result: Result = {
       id: '1', testCaseId: 'tc1', status: 'failed', testerName: 'Jordan',
-      failReason: 'broke', updatedAt: '2026-07-23T00:00:00Z',
+      failReason: 'broke', suggestion: null, updatedAt: '2026-07-23T00:00:00Z',
       screenshots: [{ id: 's1', storagePath: 'p/tc1/x.png', uploadedAt: '2026-07-23T00:00:00Z' }],
     }
     expect(result.screenshots).toHaveLength(1)

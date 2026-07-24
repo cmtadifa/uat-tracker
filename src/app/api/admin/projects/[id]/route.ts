@@ -21,6 +21,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
         status: 'not_started' as const,
         testerName: null,
         failReason: null,
+        suggestion: null,
         updatedAt: project.createdAt,
         screenshots: [],
       },

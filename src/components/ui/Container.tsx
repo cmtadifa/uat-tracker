@@ -4,6 +4,7 @@ const sizes = {
   sm: 'max-w-sm',
   md: 'max-w-2xl',
   lg: 'max-w-3xl',
+  xl: 'max-w-5xl',
 }
 
 interface ContainerProps extends HTMLAttributes<HTMLElement> {

@@ -18,6 +18,8 @@ interface ProjectSummary {
   counts: { notStarted: number; passed: number; failed: number; total: number }
 }
 
+const TILE_STYLES = ['bg-accent/15 text-accent', 'bg-success-bg text-success', 'bg-danger-bg text-danger', 'bg-muted text-muted-foreground']
+
 export default function DashboardPage() {
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [summary, setSummary] = useState({ activeProjects: 0, totalFailures: 0 })
@@ -55,14 +57,16 @@ export default function DashboardPage() {
   }
 
   return (
-    <Container size="lg">
-      <h1 className="text-2xl font-semibold">UAT Projects</h1>
-      <p className="mt-1 mb-6 text-muted-foreground">
-        {summary.activeProjects} UAT round{summary.activeProjects === 1 ? '' : 's'} active · {summary.totalFailures} failure
-        {summary.totalFailures === 1 ? '' : 's'} across all of them
-      </p>
+    <Container size="xl">
+      <div className="mb-8 text-center">
+        <h1 className="text-3xl font-semibold">UAT Projects</h1>
+        <p className="mt-2 text-muted-foreground">
+          {summary.activeProjects} UAT round{summary.activeProjects === 1 ? '' : 's'} active · {summary.totalFailures}{' '}
+          failure{summary.totalFailures === 1 ? '' : 's'} across all of them
+        </p>
+      </div>
 
-      <Card className="mb-6">
+      <Card className="mb-8">
         <form onSubmit={createProject} className="flex gap-2">
           <Input
             value={newName}
@@ -80,20 +84,37 @@ export default function DashboardPage() {
         )}
       </Card>
 
-      <ul className="flex flex-col gap-3">
-        {projects.map((p) => (
-          <li key={p.id}>
-            <Card className="transition-shadow hover:shadow-md">
-              <Link href={`/admin/projects/${p.id}`} className="font-medium text-accent hover:underline">
-                {p.name}
-              </Link>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {p.counts.passed} passed · {p.counts.failed} failed · {p.counts.notStarted} not started
-              </p>
-            </Card>
-          </li>
-        ))}
-      </ul>
+      {projects.length === 0 ? (
+        <Card className="text-center text-muted-foreground">No UAT projects yet. Create one above to get started.</Card>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {projects.map((p, i) => (
+            <Link key={p.id} href={`/admin/projects/${p.id}`} className="group block h-full">
+              <Card className="flex h-full items-start gap-4 transition-shadow hover:shadow-md">
+                <div
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl ${TILE_STYLES[i % TILE_STYLES.length]}`}
+                >
+                  📋
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="truncate font-semibold">{p.name}</p>
+                    <span className="mt-0.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">
+                      →
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {p.counts.passed} passed · {p.counts.failed} failed · {p.counts.notStarted} not started
+                  </p>
+                  {!p.inviteActive && (
+                    <p className="mt-2 text-xs font-medium text-muted-foreground">Invite revoked</p>
+                  )}
+                </div>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
     </Container>
   )
 }

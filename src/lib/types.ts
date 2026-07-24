@@ -29,6 +29,7 @@ export interface Result {
   status: Status
   testerName: string | null
   failReason: string | null
+  suggestion: string | null
   updatedAt: string
   screenshots: Screenshot[]
 }

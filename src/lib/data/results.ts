@@ -23,6 +23,7 @@ export async function updateResult(
     status: updates.status,
     testerName: updates.testerName,
     failReason: updates.status === 'failed' ? updates.failReason : null,
+    suggestion: existing?.suggestion ?? null,
     updatedAt: new Date().toISOString(),
     screenshots: existing?.screenshots ?? [],
   }
@@ -39,8 +40,26 @@ export async function addScreenshot(testCaseId: string, screenshot: Screenshot):
     status: existing?.status ?? 'not_started',
     testerName: existing?.testerName ?? null,
     failReason: existing?.failReason ?? null,
+    suggestion: existing?.suggestion ?? null,
     updatedAt: existing?.updatedAt ?? new Date().toISOString(),
     screenshots: [...(existing?.screenshots ?? []), screenshot],
+  }
+  await store.setJSON(resultKey(testCaseId), result)
+  return result
+}
+
+export async function updateResultSuggestion(testCaseId: string, suggestion: string | null): Promise<Result> {
+  const store = getDataStore()
+  const existing = await getResult(testCaseId)
+  const result: Result = {
+    id: existing?.id ?? testCaseId,
+    testCaseId,
+    status: existing?.status ?? 'not_started',
+    testerName: existing?.testerName ?? null,
+    failReason: existing?.failReason ?? null,
+    suggestion,
+    updatedAt: existing?.updatedAt ?? new Date().toISOString(),
+    screenshots: existing?.screenshots ?? [],
   }
   await store.setJSON(resultKey(testCaseId), result)
   return result

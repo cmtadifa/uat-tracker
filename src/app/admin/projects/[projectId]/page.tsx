@@ -26,6 +26,8 @@ export default function ProjectDetailPage() {
   const [editTitle, setEditTitle] = useState('')
   const [editSteps, setEditSteps] = useState('')
   const [editExpected, setEditExpected] = useState('')
+  const [suggestionDrafts, setSuggestionDrafts] = useState<Record<string, string>>({})
+  const [savingSuggestion, setSavingSuggestion] = useState<string | null>(null)
 
   async function load() {
     const res = await fetch(`/api/admin/projects/${params.projectId}`)
@@ -123,14 +125,38 @@ export default function ProjectDetailPage() {
     load()
   }
 
+  async function saveSuggestion(tcId: string) {
+    const tc = testCases.find((t) => t.id === tcId)
+    const value = suggestionDrafts[tcId] ?? tc?.result.suggestion ?? ''
+    setSavingSuggestion(tcId)
+    await fetch(`/api/admin/projects/${params.projectId}/test-cases/${tcId}/suggestion`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ suggestion: value }),
+    })
+    setSavingSuggestion(null)
+    load()
+  }
+
+  function exportResults() {
+    window.location.href = `/api/admin/projects/${params.projectId}/export`
+  }
+
   if (!project) return <Container className="text-muted-foreground">Loading…</Container>
 
   const inviteUrl = typeof window !== 'undefined' ? `${window.location.origin}/uat/${project.inviteToken}` : ''
 
   return (
     <Container size="lg">
-      <h1 className="text-2xl font-semibold">{project.name}</h1>
-      {project.description && <p className="mt-1 mb-4 text-muted-foreground">{project.description}</p>}
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">{project.name}</h1>
+          {project.description && <p className="mt-1 text-muted-foreground">{project.description}</p>}
+        </div>
+        <Button variant="secondary" onClick={exportResults}>
+          ⬇ Export Results (CSV)
+        </Button>
+      </div>
 
       <Card className="mb-6">
         <h2 className="mb-2 font-medium">Invite Link</h2>
@@ -155,9 +181,9 @@ export default function ProjectDetailPage() {
         </div>
       </Card>
 
-      <Card>
+      <Card className="mb-6">
         <h2 className="mb-2 font-medium">Add Test Case</h2>
-        <form onSubmit={createTestCase} className="mb-5 flex flex-col gap-2">
+        <form onSubmit={createTestCase} className="flex flex-col gap-2">
           <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Title" required />
           <Textarea
             value={newSteps}
@@ -177,15 +203,17 @@ export default function ProjectDetailPage() {
           </Button>
         </form>
         {tcError && (
-          <div className="mb-4">
+          <div className="mt-4">
             <ErrorText>{tcError}</ErrorText>
           </div>
         )}
+      </Card>
 
-        <h2 className="mb-3 font-medium">Test Cases ({testCases.length})</h2>
-        <ul className="flex flex-col gap-3">
-          {testCases.map((tc, index) => (
-            <li key={tc.id} className="rounded-lg border border-border p-4">
+      <h2 className="mb-3 font-medium">Test Cases ({testCases.length})</h2>
+      <ul className="flex flex-col gap-3">
+        {testCases.map((tc, index) => (
+          <li key={tc.id}>
+            <Card>
               {editingId === tc.id ? (
                 <div className="flex flex-col gap-2">
                   <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} required />
@@ -209,7 +237,8 @@ export default function ProjectDetailPage() {
                   <p className="mt-1 text-sm">
                     <span className="font-medium">Expected:</span> {tc.expectedResult}
                   </p>
-                  <div className="mt-3 flex items-center gap-2">
+
+                  <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
                     <StatusBadge status={tc.result.status} />
                     {tc.result.testerName && (
                       <span className="text-xs text-muted-foreground">
@@ -217,11 +246,13 @@ export default function ProjectDetailPage() {
                       </span>
                     )}
                   </div>
+
                   {tc.result.status === 'failed' && tc.result.failReason && (
                     <p className="mt-2 rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger">
                       Reason: {tc.result.failReason}
                     </p>
                   )}
+
                   {tc.result.screenshots.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {tc.result.screenshots.map((s) => (
@@ -235,13 +266,46 @@ export default function ProjectDetailPage() {
                       ))}
                     </div>
                   )}
-                  <div className="mt-3 flex gap-2">
-                    <Button variant="ghost" className="px-2.5" onClick={() => moveTestCase(index, 'up')}>
-                      ↑
+
+                  <div className="mt-3">
+                    <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Suggested fix / improvement
+                    </label>
+                    <Textarea
+                      value={suggestionDrafts[tc.id] ?? tc.result.suggestion ?? ''}
+                      onChange={(e) => setSuggestionDrafts((prev) => ({ ...prev, [tc.id]: e.target.value }))}
+                      placeholder="Optional note for the team, included in the exported report"
+                      rows={2}
+                      className="mb-2"
+                    />
+                    <Button
+                      variant="secondary"
+                      onClick={() => saveSuggestion(tc.id)}
+                      disabled={savingSuggestion === tc.id}
+                    >
+                      {savingSuggestion === tc.id ? 'Saving…' : 'Save Suggestion'}
                     </Button>
-                    <Button variant="ghost" className="px-2.5" onClick={() => moveTestCase(index, 'down')}>
-                      ↓
-                    </Button>
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-2 border-t border-border pt-3">
+                    <div className="inline-flex overflow-hidden rounded-lg border border-border">
+                      <button
+                        onClick={() => moveTestCase(index, 'up')}
+                        disabled={index === 0}
+                        aria-label="Move up"
+                        className="px-2.5 py-1.5 text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        ↑
+                      </button>
+                      <button
+                        onClick={() => moveTestCase(index, 'down')}
+                        disabled={index === testCases.length - 1}
+                        aria-label="Move down"
+                        className="border-l border-border px-2.5 py-1.5 text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        ↓
+                      </button>
+                    </div>
                     <Button variant="secondary" onClick={() => startEdit(tc)}>
                       Edit
                     </Button>
@@ -251,10 +315,10 @@ export default function ProjectDetailPage() {
                   </div>
                 </>
               )}
-            </li>
-          ))}
-        </ul>
-      </Card>
+            </Card>
+          </li>
+        ))}
+      </ul>
     </Container>
   )
 }
