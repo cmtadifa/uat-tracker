@@ -6,7 +6,6 @@ export interface Project {
   description: string | null
   invite_token: string
   invite_active: boolean
-  created_by: string
   created_at: string
 }
 

@@ -1,16 +1,25 @@
 'use server'
 
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
+import { signAdminSession, verifyAdminPassword } from '@/lib/admin/session'
 
 export async function signInAction(formData: FormData) {
-  const email = String(formData.get('email') ?? '')
   const password = String(formData.get('password') ?? '')
-  const supabase = await createSupabaseServerClient()
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
 
-  if (error) {
-    redirect(`/admin/login?error=${encodeURIComponent('Invalid email or password.')}`)
+  if (!verifyAdminPassword(password)) {
+    redirect(`/admin/login?error=${encodeURIComponent('Incorrect password.')}`)
   }
+
+  const sessionToken = signAdminSession({ iat: Date.now() })
+  const cookieStore = await cookies()
+  cookieStore.set('uat_admin_session', sessionToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 7,
+  })
+
   redirect('/admin/dashboard')
 }

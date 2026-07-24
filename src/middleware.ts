@@ -1,19 +1,18 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { createMiddlewareClient } from '@/lib/supabase/middlewareClient'
+import { verifyAdminSession } from '@/lib/admin/session'
 
-export async function middleware(request: NextRequest) {
-  const { supabase, response } = createMiddlewareClient(request)
-  const { data: { user } } = await supabase.auth.getUser()
-
+export function middleware(request: NextRequest) {
   const isLoginPage = request.nextUrl.pathname === '/admin/login'
   const isAdminPath = request.nextUrl.pathname.startsWith('/admin')
 
-  if (isAdminPath && !isLoginPage && !user) {
-    const redirectResponse = NextResponse.redirect(new URL('/admin/login', request.url))
-    response.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie))
-    return redirectResponse
+  if (isAdminPath && !isLoginPage) {
+    const sessionCookie = request.cookies.get('uat_admin_session')?.value
+    const session = sessionCookie ? verifyAdminSession(sessionCookie) : null
+    if (!session) {
+      return NextResponse.redirect(new URL('/admin/login', request.url))
+    }
   }
-  return response
+  return NextResponse.next()
 }
 
 export const config = {

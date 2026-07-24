@@ -10,7 +10,7 @@ describe('shared types', () => {
   it('a Project object matches the expected shape', () => {
     const project: Project = {
       id: '1', name: 'UAT 1', description: null, invite_token: 'tok',
-      invite_active: true, created_by: 'admin-1', created_at: '2026-07-23T00:00:00Z',
+      invite_active: true, created_at: '2026-07-23T00:00:00Z',
     }
     expect(project.name).toBe('UAT 1')
   })
