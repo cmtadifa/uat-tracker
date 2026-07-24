@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { Status, Project } from '@/lib/types'
+import type { Status, Project, Result } from '@/lib/types'
 
 describe('shared types', () => {
   it('accepts only the three valid status values', () => {
@@ -9,9 +9,18 @@ describe('shared types', () => {
 
   it('a Project object matches the expected shape', () => {
     const project: Project = {
-      id: '1', name: 'UAT 1', description: null, invite_token: 'tok',
-      invite_active: true, created_at: '2026-07-23T00:00:00Z',
+      id: '1', name: 'UAT 1', description: null, inviteToken: 'tok',
+      inviteActive: true, createdAt: '2026-07-23T00:00:00Z',
     }
     expect(project.name).toBe('UAT 1')
+  })
+
+  it('a Result object embeds its screenshots directly', () => {
+    const result: Result = {
+      id: '1', testCaseId: 'tc1', status: 'failed', testerName: 'Jordan',
+      failReason: 'broke', updatedAt: '2026-07-23T00:00:00Z',
+      screenshots: [{ id: 's1', storagePath: 'p/tc1/x.png', uploadedAt: '2026-07-23T00:00:00Z' }],
+    }
+    expect(result.screenshots).toHaveLength(1)
   })
 })

@@ -4,8 +4,9 @@ import type { Result } from '@/lib/types'
 
 function makeResult(overrides: Partial<Result>): Result {
   return {
-    id: 'r1', test_case_id: 'tc1', status: 'not_started',
-    tester_name: null, fail_reason: null, updated_at: '2026-07-23T00:00:00Z',
+    id: 'r1', testCaseId: 'tc1', status: 'not_started',
+    testerName: null, failReason: null, updatedAt: '2026-07-23T00:00:00Z',
+    screenshots: [],
     ...overrides,
   }
 }
