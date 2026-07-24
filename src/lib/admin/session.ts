@@ -24,8 +24,8 @@ function toBase64Url(buffer: ArrayBuffer): string {
   return Buffer.from(buffer).toString('base64url')
 }
 
-function fromBase64Url(value: string): Uint8Array {
-  return new Uint8Array(Buffer.from(value, 'base64url'))
+function fromBase64Url(value: string): Uint8Array<ArrayBuffer> {
+  return Uint8Array.from(Buffer.from(value, 'base64url'))
 }
 
 function timingSafeEqualBytes(a: Uint8Array, b: Uint8Array): boolean {
