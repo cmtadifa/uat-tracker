@@ -3,17 +3,13 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
+import Container from '@/components/ui/Container'
+import StatusBadge from '@/components/ui/Badge'
 
 interface ChecklistItem {
   id: string
   title: string
   status: string
-}
-
-function statusLabel(status: string) {
-  if (status === 'passed') return 'Passed'
-  if (status === 'failed') return 'Failed'
-  return 'Not Started'
 }
 
 export default function ChecklistPage() {
@@ -36,22 +32,25 @@ export default function ChecklistPage() {
     })
   }, [params.token])
 
-  if (error) return <main className="p-8">{error}</main>
+  if (error) return <Container className="text-muted-foreground">{error}</Container>
 
   return (
-    <main className="mx-auto max-w-2xl p-8">
-      <h1 className="text-xl font-semibold mb-1">{projectName}</h1>
-      <p className="text-gray-600 mb-4">Testing as {testerName}</p>
+    <Container>
+      <h1 className="text-xl font-semibold">{projectName}</h1>
+      <p className="mt-1 mb-5 text-muted-foreground">Testing as {testerName}</p>
       <ul className="flex flex-col gap-2">
         {items.map((item) => (
-          <li key={item.id} className="border rounded p-3 flex justify-between items-center">
-            <Link href={`/uat/${params.token}/test-case/${item.id}`} className="underline">
+          <li
+            key={item.id}
+            className="flex items-center justify-between rounded-xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
+          >
+            <Link href={`/uat/${params.token}/test-case/${item.id}`} className="font-medium text-accent hover:underline">
               {item.title}
             </Link>
-            <span className="text-xs text-gray-500">{statusLabel(item.status)}</span>
+            <StatusBadge status={item.status} />
           </li>
         ))}
       </ul>
-    </main>
+    </Container>
   )
 }

@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Container from '@/components/ui/Container'
+import Card from '@/components/ui/Card'
+import Button from '@/components/ui/Button'
+import { Textarea } from '@/components/ui/Input'
+import ErrorText from '@/components/ui/ErrorText'
 
 interface TestCaseDetail {
   id: string
@@ -65,61 +70,67 @@ export default function TestCaseDetailPage() {
     router.push(`/uat/${params.token}/checklist`)
   }
 
-  if (error && !testCase) return <main className="p-8">{error}</main>
-  if (!testCase) return <main className="p-8">Loading…</main>
+  if (error && !testCase) return <Container className="text-muted-foreground">{error}</Container>
+  if (!testCase) return <Container className="text-muted-foreground">Loading…</Container>
 
   return (
-    <main className="mx-auto max-w-2xl p-8">
-      <h1 className="text-xl font-semibold mb-2">{testCase.title}</h1>
-      <ol className="list-decimal list-inside mb-4">
-        {testCase.steps.map((s, i) => (
-          <li key={i}>{s}</li>
-        ))}
-      </ol>
-      <p className="mb-4">
-        <span className="font-medium">Expected result:</span> {testCase.expectedResult}
-      </p>
+    <Container>
+      <h1 className="mb-3 text-xl font-semibold">{testCase.title}</h1>
+      <Card className="mb-4">
+        <ol className="list-inside list-decimal">
+          {testCase.steps.map((s, i) => (
+            <li key={i}>{s}</li>
+          ))}
+        </ol>
+        <p className="mt-3 text-sm">
+          <span className="font-medium">Expected result:</span> {testCase.expectedResult}
+        </p>
+      </Card>
 
-      <div className="flex gap-2 mb-4">
-        <button onClick={() => submit('passed')} disabled={submitting} className="bg-green-600 text-white rounded px-4 py-2">
+      <div className="mb-4 flex gap-2">
+        <Button variant="success" onClick={() => submit('passed')} disabled={submitting}>
           Pass
-        </button>
+        </Button>
       </div>
 
-      <div className="border rounded p-4">
-        <label className="block mb-2 font-medium">Fail with a reason</label>
-        <textarea
+      <Card>
+        <label className="mb-2 block font-medium">Fail with a reason</label>
+        <Textarea
           value={failReason}
           onChange={(e) => setFailReason(e.target.value)}
           rows={3}
           placeholder="What went wrong?"
-          className="border rounded p-2 w-full mb-2"
+          className="mb-3"
         />
         <input
           type="file"
           accept="image/*"
           multiple
           onChange={(e) => setFiles(e.target.files)}
-          className="mb-2 block"
+          className="mb-3 block text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground hover:file:bg-border"
         />
         {files && files.length > 0 && (
-          <div className="flex gap-2 mb-2 flex-wrap">
+          <div className="mb-3 flex flex-wrap gap-2">
             {Array.from(files).map((file, i) => (
               <img
                 key={i}
                 src={URL.createObjectURL(file)}
                 alt={`Selected screenshot ${i + 1}`}
-                className="h-16 w-16 object-cover rounded border"
+                className="h-16 w-16 rounded-lg border border-border object-cover"
               />
             ))}
           </div>
         )}
-        <button onClick={() => submit('failed')} disabled={submitting} className="bg-red-600 text-white rounded px-4 py-2">
+        <Button variant="danger" onClick={() => submit('failed')} disabled={submitting}>
           Fail
-        </button>
-      </div>
+        </Button>
+      </Card>
 
-      {error && <p className="text-red-600 mt-4">{error}</p>}
-    </main>
+      {error && (
+        <div className="mt-4">
+          <ErrorText>{error}</ErrorText>
+        </div>
+      )}
+    </Container>
   )
 }

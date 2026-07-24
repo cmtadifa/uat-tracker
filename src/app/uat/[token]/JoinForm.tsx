@@ -2,6 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Container from '@/components/ui/Container'
+import Card from '@/components/ui/Card'
+import Button from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import ErrorText from '@/components/ui/ErrorText'
 
 export default function JoinForm({ token, projectName }: { token: string; projectName: string }) {
   const [name, setName] = useState('')
@@ -33,22 +38,20 @@ export default function JoinForm({ token, projectName }: { token: string; projec
   }
 
   return (
-    <main className="mx-auto max-w-sm p-8">
-      <h1 className="text-xl font-semibold mb-2">{projectName}</h1>
-      <p className="text-gray-600 mb-4">Enter your name to start testing.</p>
-      <form onSubmit={submit} className="flex flex-col gap-3">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Your name"
-          required
-          className="border rounded p-2"
-        />
-        <button type="submit" className="bg-black text-white rounded p-2">
-          Start Testing
-        </button>
-      </form>
-      {error && <p className="text-red-600 mt-3">{error}</p>}
-    </main>
+    <Container size="sm" className="flex flex-1 flex-col items-center justify-center">
+      <Card className="w-full">
+        <h1 className="mb-1 text-xl font-semibold">{projectName}</h1>
+        <p className="mb-5 text-sm text-muted-foreground">Enter your name to start testing.</p>
+        <form onSubmit={submit} className="flex flex-col gap-3">
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" required autoFocus />
+          <Button type="submit">Start Testing</Button>
+        </form>
+        {error && (
+          <div className="mt-4">
+            <ErrorText>{error}</ErrorText>
+          </div>
+        )}
+      </Card>
+    </Container>
   )
 }

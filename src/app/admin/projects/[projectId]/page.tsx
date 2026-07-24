@@ -3,19 +3,15 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import type { Project, TestCaseMeta, Result } from '@/lib/types'
+import Container from '@/components/ui/Container'
+import Card from '@/components/ui/Card'
+import Button from '@/components/ui/Button'
+import { Input, Textarea } from '@/components/ui/Input'
+import ErrorText from '@/components/ui/ErrorText'
+import StatusBadge from '@/components/ui/Badge'
 
 interface TestCaseWithResult extends TestCaseMeta {
   result: Result
-}
-
-function statusBadge(status: string) {
-  const styles: Record<string, string> = {
-    not_started: 'bg-gray-200 text-gray-700',
-    passed: 'bg-green-100 text-green-800',
-    failed: 'bg-red-100 text-red-800',
-  }
-  const labels: Record<string, string> = { not_started: 'Not Started', passed: 'Passed', failed: 'Failed' }
-  return <span className={`text-xs rounded px-2 py-1 ${styles[status]}`}>{labels[status]}</span>
 }
 
 export default function ProjectDetailPage() {
@@ -127,142 +123,138 @@ export default function ProjectDetailPage() {
     load()
   }
 
-  if (!project) return <main className="p-8">Loading…</main>
+  if (!project) return <Container className="text-muted-foreground">Loading…</Container>
 
   const inviteUrl = typeof window !== 'undefined' ? `${window.location.origin}/uat/${project.inviteToken}` : ''
 
   return (
-    <main className="mx-auto max-w-3xl p-8">
-      <h1 className="text-2xl font-semibold mb-2">{project.name}</h1>
-      {project.description && <p className="text-gray-600 mb-4">{project.description}</p>}
+    <Container size="lg">
+      <h1 className="text-2xl font-semibold">{project.name}</h1>
+      {project.description && <p className="mt-1 mb-4 text-muted-foreground">{project.description}</p>}
 
-      <section className="border rounded p-4 mb-6">
-        <h2 className="font-medium mb-2">Invite Link</h2>
+      <Card className="mb-6">
+        <h2 className="mb-2 font-medium">Invite Link</h2>
         {project.inviteActive ? (
-          <p className="break-all text-sm mb-2">{inviteUrl}</p>
+          <p className="mb-3 break-all rounded-lg bg-muted px-3 py-2 text-sm">{inviteUrl}</p>
         ) : (
-          <p className="text-sm text-gray-500 mb-2">Link revoked</p>
+          <p className="mb-3 text-sm text-muted-foreground">Link revoked</p>
         )}
         <div className="flex gap-2">
-          <button onClick={() => inviteAction('regenerate')} className="border rounded px-3 py-1">
+          <Button variant="secondary" onClick={() => inviteAction('regenerate')}>
             Regenerate
-          </button>
+          </Button>
           {project.inviteActive ? (
-            <button onClick={() => inviteAction('revoke')} className="border rounded px-3 py-1">
+            <Button variant="secondary" onClick={() => inviteAction('revoke')}>
               Revoke
-            </button>
+            </Button>
           ) : (
-            <button onClick={() => inviteAction('reactivate')} className="border rounded px-3 py-1">
+            <Button variant="secondary" onClick={() => inviteAction('reactivate')}>
               Reactivate
-            </button>
+            </Button>
           )}
         </div>
-      </section>
+      </Card>
 
-      <section className="border rounded p-4">
-        <h2 className="font-medium mb-2">Add Test Case</h2>
-        <form onSubmit={createTestCase} className="flex flex-col gap-2 mb-4">
-          <input
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            placeholder="Title"
-            required
-            className="border rounded p-2"
-          />
-          <textarea
+      <Card>
+        <h2 className="mb-2 font-medium">Add Test Case</h2>
+        <form onSubmit={createTestCase} className="mb-5 flex flex-col gap-2">
+          <Input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Title" required />
+          <Textarea
             value={newSteps}
             onChange={(e) => setNewSteps(e.target.value)}
             placeholder="Steps, one per line"
             rows={3}
-            className="border rounded p-2"
           />
-          <textarea
+          <Textarea
             value={newExpected}
             onChange={(e) => setNewExpected(e.target.value)}
             placeholder="Expected result"
             required
             rows={2}
-            className="border rounded p-2"
           />
-          <button type="submit" className="bg-black text-white rounded p-2 self-start px-4">
+          <Button type="submit" className="self-start">
             Add Test Case
-          </button>
+          </Button>
         </form>
-        {tcError && <p className="text-red-600 mb-4">{tcError}</p>}
+        {tcError && (
+          <div className="mb-4">
+            <ErrorText>{tcError}</ErrorText>
+          </div>
+        )}
 
-        <h2 className="font-medium mb-2">Test Cases ({testCases.length})</h2>
+        <h2 className="mb-3 font-medium">Test Cases ({testCases.length})</h2>
         <ul className="flex flex-col gap-3">
           {testCases.map((tc, index) => (
-            <li key={tc.id} className="border rounded p-3">
+            <li key={tc.id} className="rounded-lg border border-border p-4">
               {editingId === tc.id ? (
                 <div className="flex flex-col gap-2">
-                  <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} required className="border rounded p-2" />
-                  <textarea value={editSteps} onChange={(e) => setEditSteps(e.target.value)} rows={3} className="border rounded p-2" />
-                  <textarea value={editExpected} onChange={(e) => setEditExpected(e.target.value)} required rows={2} className="border rounded p-2" />
+                  <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} required />
+                  <Textarea value={editSteps} onChange={(e) => setEditSteps(e.target.value)} rows={3} />
+                  <Textarea value={editExpected} onChange={(e) => setEditExpected(e.target.value)} required rows={2} />
                   <div className="flex gap-2">
-                    <button onClick={() => saveEdit(tc.id)} className="bg-black text-white rounded px-3 py-1">
-                      Save
-                    </button>
-                    <button onClick={() => setEditingId(null)} className="border rounded px-3 py-1">
+                    <Button onClick={() => saveEdit(tc.id)}>Save</Button>
+                    <Button variant="secondary" onClick={() => setEditingId(null)}>
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : (
                 <>
                   <p className="font-medium">{tc.title}</p>
-                  <ol className="list-decimal list-inside text-sm text-gray-600">
+                  <ol className="list-inside list-decimal text-sm text-muted-foreground">
                     {tc.steps.map((s, i) => (
                       <li key={i}>{s}</li>
                     ))}
                   </ol>
-                  <p className="text-sm mt-1">
+                  <p className="mt-1 text-sm">
                     <span className="font-medium">Expected:</span> {tc.expectedResult}
                   </p>
-                  <div className="mt-2 flex items-center gap-2">
-                    {statusBadge(tc.result.status)}
+                  <div className="mt-3 flex items-center gap-2">
+                    <StatusBadge status={tc.result.status} />
                     {tc.result.testerName && (
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-muted-foreground">
                         by {tc.result.testerName} · {new Date(tc.result.updatedAt).toLocaleString()}
                       </span>
                     )}
                   </div>
                   {tc.result.status === 'failed' && tc.result.failReason && (
-                    <p className="text-sm text-red-700 mt-1">Reason: {tc.result.failReason}</p>
+                    <p className="mt-2 rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger">
+                      Reason: {tc.result.failReason}
+                    </p>
                   )}
                   {tc.result.screenshots.length > 0 && (
-                    <div className="flex gap-2 mt-2 flex-wrap">
+                    <div className="mt-3 flex flex-wrap gap-2">
                       {tc.result.screenshots.map((s) => (
                         <a key={s.id} href={`/api/admin/screenshots/${s.storagePath}`} target="_blank" rel="noreferrer">
                           <img
                             src={`/api/admin/screenshots/${s.storagePath}`}
                             alt="Evidence screenshot"
-                            className="h-16 w-16 object-cover rounded border"
+                            className="h-16 w-16 rounded-lg border border-border object-cover"
                           />
                         </a>
                       ))}
                     </div>
                   )}
-                  <div className="flex gap-2 mt-2">
-                    <button onClick={() => moveTestCase(index, 'up')} className="border rounded px-2">
+                  <div className="mt-3 flex gap-2">
+                    <Button variant="ghost" className="px-2.5" onClick={() => moveTestCase(index, 'up')}>
                       ↑
-                    </button>
-                    <button onClick={() => moveTestCase(index, 'down')} className="border rounded px-2">
+                    </Button>
+                    <Button variant="ghost" className="px-2.5" onClick={() => moveTestCase(index, 'down')}>
                       ↓
-                    </button>
-                    <button onClick={() => startEdit(tc)} className="border rounded px-2">
+                    </Button>
+                    <Button variant="secondary" onClick={() => startEdit(tc)}>
                       Edit
-                    </button>
-                    <button onClick={() => deleteTestCase(tc.id)} className="border rounded px-2">
+                    </Button>
+                    <Button variant="danger" onClick={() => deleteTestCase(tc.id)}>
                       Delete
-                    </button>
+                    </Button>
                   </div>
                 </>
               )}
             </li>
           ))}
         </ul>
-      </section>
-    </main>
+      </Card>
+    </Container>
   )
 }

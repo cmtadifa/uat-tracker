@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import Container from '@/components/ui/Container'
+import Card from '@/components/ui/Card'
+import Button from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import ErrorText from '@/components/ui/ErrorText'
 
 interface ProjectSummary {
   id: string
@@ -50,36 +55,45 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl p-8">
-      <h1 className="text-2xl font-semibold mb-2">UAT Projects</h1>
-      <p className="text-gray-600 mb-6">
-        {summary.activeProjects} UAT round{summary.activeProjects === 1 ? '' : 's'} active · {summary.totalFailures} failure{summary.totalFailures === 1 ? '' : 's'} across all of them
+    <Container size="lg">
+      <h1 className="text-2xl font-semibold">UAT Projects</h1>
+      <p className="mt-1 mb-6 text-muted-foreground">
+        {summary.activeProjects} UAT round{summary.activeProjects === 1 ? '' : 's'} active · {summary.totalFailures} failure
+        {summary.totalFailures === 1 ? '' : 's'} across all of them
       </p>
 
-      <form onSubmit={createProject} className="flex gap-2 mb-6">
-        <input
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="New UAT project name"
-          required
-          className="border rounded p-2 flex-1"
-        />
-        <button type="submit" className="bg-black text-white rounded px-4">Create</button>
-      </form>
-      {error && <p className="text-red-600 mb-4">{error}</p>}
+      <Card className="mb-6">
+        <form onSubmit={createProject} className="flex gap-2">
+          <Input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="New UAT project name"
+            required
+            className="flex-1"
+          />
+          <Button type="submit">Create</Button>
+        </form>
+        {error && (
+          <div className="mt-3">
+            <ErrorText>{error}</ErrorText>
+          </div>
+        )}
+      </Card>
 
       <ul className="flex flex-col gap-3">
         {projects.map((p) => (
-          <li key={p.id} className="border rounded p-4">
-            <Link href={`/admin/projects/${p.id}`} className="font-medium underline">
-              {p.name}
-            </Link>
-            <p className="text-sm text-gray-600">
-              {p.counts.passed} passed · {p.counts.failed} failed · {p.counts.notStarted} not started
-            </p>
+          <li key={p.id}>
+            <Card className="transition-shadow hover:shadow-md">
+              <Link href={`/admin/projects/${p.id}`} className="font-medium text-accent hover:underline">
+                {p.name}
+              </Link>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {p.counts.passed} passed · {p.counts.failed} failed · {p.counts.notStarted} not started
+              </p>
+            </Card>
           </li>
         ))}
       </ul>
-    </main>
+    </Container>
   )
 }
