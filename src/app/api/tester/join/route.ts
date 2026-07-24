@@ -4,10 +4,16 @@ import { findProjectByInviteToken } from '@/lib/data/projects'
 import { signTesterSession } from '@/lib/tester/session'
 
 export async function POST(request: Request) {
-  const body = await request.json()
-  const token = String(body.token ?? '')
-  const name = String(body.name ?? '').trim()
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid request.' }, { status: 400 })
+  }
+  const token = String((body as { token?: unknown })?.token ?? '')
+  const name = String((body as { name?: unknown })?.name ?? '').trim()
   if (!name) return NextResponse.json({ error: 'Name is required.' }, { status: 400 })
+  if (name.length > 100) return NextResponse.json({ error: 'Name is too long.' }, { status: 400 })
 
   const project = await findProjectByInviteToken(token)
   if (!project || !project.inviteActive) {

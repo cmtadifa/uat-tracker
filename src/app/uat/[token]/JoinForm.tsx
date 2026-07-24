@@ -16,9 +16,17 @@ export default function JoinForm({ token, projectName }: { token: string; projec
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token, name }),
     })
-    const data = await res.json()
+    let data: { error?: string } = {}
+    try {
+      data = await res.json()
+    } catch {
+      if (!res.ok) {
+        setError('Something went wrong. Please try again.')
+        return
+      }
+    }
     if (!res.ok) {
-      setError(data.error)
+      setError(data.error ?? 'Something went wrong. Please try again.')
       return
     }
     router.push(`/uat/${token}/checklist`)
