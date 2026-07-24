@@ -8,8 +8,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ pat
 
   const storagePath = path.join('/')
   const store = getEvidenceStore()
-  const { data, metadata } = await store.getWithMetadata(storagePath, { type: 'arrayBuffer' })
-  if (!data) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
+  const result = await store.getWithMetadata(storagePath, { type: 'arrayBuffer' })
+  if (!result) return NextResponse.json({ error: 'Not found.' }, { status: 404 })
+  const { data, metadata } = result
 
   return new NextResponse(data, {
     headers: { 'Content-Type': (metadata?.contentType as string | undefined) ?? 'application/octet-stream' },
