@@ -4,16 +4,15 @@ export interface Project {
   id: string
   name: string
   description: string | null
+  inviteToken: string
+  inviteActive: boolean
   createdAt: string
 }
 
-export interface Invite {
+export interface Run {
   id: string
-  token: string
-  testerName: string | null
-  claimedAt: string | null
-  active: boolean
-  createdAt: string
+  testerName: string
+  startedAt: string
 }
 
 export interface TestCaseMeta {
@@ -34,7 +33,7 @@ export interface Screenshot {
 export interface Result {
   id: string
   testCaseId: string
-  inviteToken: string
+  runId: string
   status: Status
   testerName: string | null
   failReason: string | null

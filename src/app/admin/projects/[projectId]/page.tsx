@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import type { Project, TestCaseMeta, Result, Invite } from '@/lib/types'
+import type { Project, TestCaseMeta, Result, Run } from '@/lib/types'
 import Container from '@/components/ui/Container'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
@@ -11,13 +11,13 @@ import ErrorText from '@/components/ui/ErrorText'
 import StatusBadge from '@/components/ui/Badge'
 
 interface TestCaseWithResults extends TestCaseMeta {
-  results: { invite: Invite; result: Result }[]
+  results: { run: Run; result: Result }[]
 }
 
 export default function ProjectDetailPage() {
   const params = useParams<{ projectId: string }>()
   const [project, setProject] = useState<Project | null>(null)
-  const [invites, setInvites] = useState<Invite[]>([])
+  const [runs, setRuns] = useState<Run[]>([])
   const [testCases, setTestCases] = useState<TestCaseWithResults[]>([])
   const [newTitle, setNewTitle] = useState('')
   const [newSteps, setNewSteps] = useState('')
@@ -29,14 +29,13 @@ export default function ProjectDetailPage() {
   const [editExpected, setEditExpected] = useState('')
   const [suggestionDrafts, setSuggestionDrafts] = useState<Record<string, string>>({})
   const [savingSuggestion, setSavingSuggestion] = useState<string | null>(null)
-  const [creatingInvite, setCreatingInvite] = useState(false)
 
   async function load() {
     const res = await fetch(`/api/admin/projects/${params.projectId}`)
     const data = await res.json()
     if (!res.ok) return
     setProject(data.project)
-    setInvites(data.invites)
+    setRuns(data.runs)
     setTestCases(data.testCases)
   }
 
@@ -44,18 +43,11 @@ export default function ProjectDetailPage() {
     load()
   }, [params.projectId])
 
-  async function generateInvite() {
-    setCreatingInvite(true)
-    await fetch(`/api/admin/projects/${params.projectId}/invites`, { method: 'POST' })
-    setCreatingInvite(false)
-    load()
-  }
-
-  async function setInviteActive(inviteId: string, active: boolean) {
-    await fetch(`/api/admin/projects/${params.projectId}/invites/${inviteId}`, {
-      method: 'PATCH',
+  async function inviteAction(action: 'regenerate' | 'revoke' | 'reactivate') {
+    await fetch(`/api/admin/projects/${params.projectId}/invite`, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ active }),
+      body: JSON.stringify({ action }),
     })
     load()
   }
@@ -154,7 +146,7 @@ export default function ProjectDetailPage() {
 
   if (!project) return <Container className="text-muted-foreground">Loading…</Container>
 
-  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const inviteUrl = typeof window !== 'undefined' ? `${window.location.origin}/uat/${project.inviteToken}` : ''
 
   return (
     <Container size="xl">
@@ -169,49 +161,45 @@ export default function ProjectDetailPage() {
       </div>
 
       <Card className="mb-6">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-medium">Invitations</h2>
-          <Button variant="secondary" onClick={generateInvite} disabled={creatingInvite}>
-            {creatingInvite ? 'Generating…' : '+ Generate New Invite Link'}
-          </Button>
-        </div>
-        <p className="mb-3 text-sm text-muted-foreground">
-          Each link works for one tester only — once someone joins with it, it can&apos;t be used by anyone else.
-          Generate a new link for each person you want to invite.
+        <h2 className="mb-2 font-medium">Invite Link</h2>
+        <p className="mb-2 text-sm text-muted-foreground">
+          Share this one link with the whole team — anyone who opens it and enters their name gets their own
+          independent checklist.
         </p>
-        {invites.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No invite links yet.</p>
+        {project.inviteActive ? (
+          <p className="mb-3 break-all rounded-lg bg-muted px-3 py-2 text-sm">{inviteUrl}</p>
         ) : (
-          <ul className="flex flex-col gap-2">
-            {invites.map((invite) => (
-              <li
-                key={invite.id}
-                className="flex flex-col gap-2 rounded-lg border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="min-w-0 flex-1">
-                  {invite.claimedAt ? (
-                    <p className="text-sm">
-                      <span className="font-medium">Claimed by {invite.testerName}</span>{' '}
-                      <span className="text-muted-foreground">· {new Date(invite.claimedAt).toLocaleString()}</span>
-                    </p>
-                  ) : (
-                    <p className="break-all rounded bg-muted px-2 py-1 font-mono text-xs">
-                      {origin}/uat/{invite.token}
-                    </p>
-                  )}
-                  {!invite.active && <p className="mt-1 text-xs font-medium text-danger">Revoked</p>}
-                </div>
-                <Button
-                  variant="secondary"
-                  onClick={() => setInviteActive(invite.id, !invite.active)}
-                  className="self-start sm:self-auto"
-                >
-                  {invite.active ? 'Revoke' : 'Reactivate'}
-                </Button>
-              </li>
-            ))}
-          </ul>
+          <p className="mb-3 text-sm text-muted-foreground">Link revoked</p>
         )}
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={() => inviteAction('regenerate')}>
+            Regenerate
+          </Button>
+          {project.inviteActive ? (
+            <Button variant="secondary" onClick={() => inviteAction('revoke')}>
+              Revoke
+            </Button>
+          ) : (
+            <Button variant="secondary" onClick={() => inviteAction('reactivate')}>
+              Reactivate
+            </Button>
+          )}
+        </div>
+
+        <div className="mt-4 border-t border-border pt-3">
+          <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {runs.length === 0 ? 'No testers yet' : `${runs.length} tester${runs.length === 1 ? '' : 's'} joined`}
+          </h3>
+          {runs.length > 0 && (
+            <ul className="flex flex-wrap gap-2">
+              {runs.map((run) => (
+                <li key={run.id} className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+                  {run.testerName} · {new Date(run.startedAt).toLocaleDateString()}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </Card>
 
       <Card className="mb-6">
@@ -277,17 +265,15 @@ export default function ProjectDetailPage() {
                       : `${tc.results.length} tester${tc.results.length === 1 ? '' : 's'}`}
                   </p>
                   {tc.results.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No one has joined and tested this yet.
-                    </p>
+                    <p className="text-sm text-muted-foreground">No one has joined and tested this yet.</p>
                   ) : (
                     <ul className="flex flex-col gap-2">
-                      {tc.results.map(({ invite, result }) => (
-                        <li key={invite.id} className="rounded-lg bg-muted p-2.5">
+                      {tc.results.map(({ run, result }) => (
+                        <li key={run.id} className="rounded-lg bg-muted p-2.5">
                           <div className="flex flex-wrap items-center gap-2">
                             <StatusBadge status={result.status} />
                             <span className="text-xs text-muted-foreground">
-                              {invite.testerName} · {new Date(result.updatedAt).toLocaleString()}
+                              {run.testerName} · {new Date(result.updatedAt).toLocaleString()}
                             </span>
                           </div>
                           {result.status === 'failed' && result.failReason && (

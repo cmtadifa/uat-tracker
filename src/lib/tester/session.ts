@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from 'crypto'
 
 export interface TesterSessionPayload {
   projectToken: string
+  runId: string
   testerName: string
   iat: number
 }
@@ -38,6 +39,7 @@ export function verifyTesterSession(token: string): TesterSessionPayload | null 
     const payload = JSON.parse(decoded)
     if (
       typeof payload.projectToken !== 'string' ||
+      typeof payload.runId !== 'string' ||
       typeof payload.testerName !== 'string' ||
       typeof payload.iat !== 'number'
     ) {

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/admin/session'
 import { getProjectSummary } from '@/lib/data/projects'
-import { listInvites } from '@/lib/data/invites'
+import { listRuns } from '@/lib/data/runs'
 import { listTestCases } from '@/lib/data/testCases'
 import { getResult } from '@/lib/data/results'
 
@@ -29,24 +29,23 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const project = await getProjectSummary(id)
   if (!project) return NextResponse.json({ error: 'Project not found.' }, { status: 404 })
 
-  const [invites, testCases] = await Promise.all([listInvites(id), listTestCases(id)])
-  const claimedInvites = invites.filter((i) => i.claimedAt)
+  const [runs, testCases] = await Promise.all([listRuns(id), listTestCases(id)])
 
   const rows: string[] = []
   for (const tc of testCases) {
-    if (claimedInvites.length === 0) {
+    if (runs.length === 0) {
       rows.push(csvRow([tc.title, tc.steps.join(' | '), tc.expectedResult, 'Not Started', '', '', tc.suggestion ?? '', '']))
       continue
     }
-    for (const invite of claimedInvites) {
-      const result = await getResult(invite.token, tc.id)
+    for (const run of runs) {
+      const result = await getResult(run.id, tc.id)
       rows.push(
         csvRow([
           tc.title,
           tc.steps.join(' | '),
           tc.expectedResult,
           STATUS_LABELS[result?.status ?? 'not_started'] ?? 'Not Started',
-          invite.testerName ?? '',
+          run.testerName,
           result?.failReason ?? '',
           tc.suggestion ?? '',
           result?.updatedAt ? new Date(result.updatedAt).toLocaleString() : '',

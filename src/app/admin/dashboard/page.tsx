@@ -12,9 +12,10 @@ interface ProjectSummary {
   id: string
   name: string
   description: string | null
+  inviteToken: string
+  inviteActive: boolean
   createdAt: string
-  inviteCount: number
-  claimedInviteCount: number
+  testerCount: number
   counts: { notStarted: number; passed: number; failed: number; total: number }
 }
 
@@ -107,7 +108,8 @@ export default function DashboardPage() {
                     {p.counts.passed} passed · {p.counts.failed} failed · {p.counts.notStarted} not started
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {p.claimedInviteCount} of {p.inviteCount} invite{p.inviteCount === 1 ? '' : 's'} used
+                    {p.testerCount} tester{p.testerCount === 1 ? '' : 's'} so far
+                    {!p.inviteActive && ' · Invite revoked'}
                   </p>
                 </div>
               </Card>

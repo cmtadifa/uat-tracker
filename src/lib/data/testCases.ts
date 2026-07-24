@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import { getDataStore, getEvidenceStore } from './store'
-import { listInvites } from './invites'
+import { listRuns } from './runs'
 import type { TestCaseMeta } from '@/lib/types'
 
 function testCasesKey(projectId: string): string {
@@ -53,8 +53,8 @@ export async function deleteTestCase(projectId: string, testCaseId: string): Pro
   const remaining = testCases.filter((tc) => tc.id !== testCaseId)
   await store.setJSON(testCasesKey(projectId), remaining)
 
-  const invites = await listInvites(projectId)
-  await Promise.all(invites.map((invite) => store.delete(`result:${invite.token}:${testCaseId}`)))
+  const runs = await listRuns(projectId)
+  await Promise.all(runs.map((run) => store.delete(`result:${run.id}:${testCaseId}`)))
 
   const evidenceStore = getEvidenceStore()
   const { blobs } = await evidenceStore.list({ prefix: `${projectId}/${testCaseId}/` })

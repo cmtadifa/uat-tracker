@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdminSession } from '@/lib/admin/session'
 import { listProjects, createProject } from '@/lib/data/projects'
-import { listInvites } from '@/lib/data/invites'
+import { listRuns } from '@/lib/data/runs'
 import { listTestCases } from '@/lib/data/testCases'
 import { getResult } from '@/lib/data/results'
 import { countByStatus } from '@/lib/aggregate'
@@ -12,19 +12,21 @@ export async function GET() {
   const projects = await listProjects()
   const projectSummaries = await Promise.all(
     projects.map(async (p) => {
-      const [testCases, invites] = await Promise.all([listTestCases(p.id), listInvites(p.id)])
-      const claimedInvites = invites.filter((i) => i.claimedAt)
-      const results = (
-        await Promise.all(testCases.flatMap((tc) => claimedInvites.map((invite) => getResult(invite.token, tc.id))))
-      ).filter((r): r is NonNullable<typeof r> => r !== null)
-      const counts = countByStatus(results)
+      const [testCases, runs] = await Promise.all([listTestCases(p.id), listRuns(p.id)])
+      const statuses = await Promise.all(
+        testCases.flatMap((tc) =>
+          runs.map(async (run) => ({ status: (await getResult(run.id, tc.id))?.status ?? 'not_started' }))
+        )
+      )
+      const counts = countByStatus(statuses)
       return {
         id: p.id,
         name: p.name,
         description: p.description,
+        inviteToken: p.inviteToken,
+        inviteActive: p.inviteActive,
         createdAt: p.createdAt,
-        inviteCount: invites.length,
-        claimedInviteCount: claimedInvites.length,
+        testerCount: runs.length,
         counts,
       }
     })
