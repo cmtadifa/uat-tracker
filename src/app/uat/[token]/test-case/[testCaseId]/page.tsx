@@ -19,6 +19,7 @@ export default function TestCaseDetailPage() {
   const [failReason, setFailReason] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [files, setFiles] = useState<FileList | null>(null)
 
   useEffect(() => {
     fetch(`/api/tester/test-case/${params.testCaseId}`).then(async (res) => {
@@ -41,11 +42,26 @@ export default function TestCaseDetailPage() {
       body: JSON.stringify({ status, failReason: status === 'failed' ? failReason : null }),
     })
     const data = await res.json()
-    setSubmitting(false)
     if (!res.ok) {
+      setSubmitting(false)
       setError(data.error)
       return
     }
+
+    if (status === 'failed' && files && files.length > 0) {
+      const form = new FormData()
+      form.append('testCaseId', params.testCaseId)
+      Array.from(files).forEach((file) => form.append('files', file))
+      const uploadRes = await fetch('/api/tester/upload', { method: 'POST', body: form })
+      const uploadData = await uploadRes.json()
+      if (!uploadRes.ok) {
+        setSubmitting(false)
+        setError(uploadData.error)
+        return
+      }
+    }
+
+    setSubmitting(false)
     router.push(`/uat/${params.token}/checklist`)
   }
 
@@ -79,6 +95,25 @@ export default function TestCaseDetailPage() {
           placeholder="What went wrong?"
           className="border rounded p-2 w-full mb-2"
         />
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={(e) => setFiles(e.target.files)}
+          className="mb-2 block"
+        />
+        {files && files.length > 0 && (
+          <div className="flex gap-2 mb-2 flex-wrap">
+            {Array.from(files).map((file, i) => (
+              <img
+                key={i}
+                src={URL.createObjectURL(file)}
+                alt={`Selected screenshot ${i + 1}`}
+                className="h-16 w-16 object-cover rounded border"
+              />
+            ))}
+          </div>
+        )}
         <button onClick={() => submit('failed')} disabled={submitting} className="bg-red-600 text-white rounded px-4 py-2">
           Fail
         </button>
