@@ -10,7 +10,7 @@ export async function signInAction(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
-    redirect(`/admin/login?error=${encodeURIComponent(error.message)}`)
+    redirect(`/admin/login?error=${encodeURIComponent('Invalid email or password.')}`)
   }
   redirect('/admin/dashboard')
 }

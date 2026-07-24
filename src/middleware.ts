@@ -9,7 +9,9 @@ export async function middleware(request: NextRequest) {
   const isAdminPath = request.nextUrl.pathname.startsWith('/admin')
 
   if (isAdminPath && !isLoginPage && !user) {
-    return NextResponse.redirect(new URL('/admin/login', request.url))
+    const redirectResponse = NextResponse.redirect(new URL('/admin/login', request.url))
+    response.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie))
+    return redirectResponse
   }
   return response
 }
