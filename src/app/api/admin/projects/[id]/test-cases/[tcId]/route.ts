@@ -8,8 +8,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   const body = await request.json()
   const update: { title?: string; expectedResult?: string; steps?: string[]; orderIndex?: number } = {}
-  if (typeof body.title === 'string') update.title = body.title.trim()
-  if (typeof body.expectedResult === 'string') update.expectedResult = body.expectedResult.trim()
+  if (typeof body.title === 'string') {
+    const trimmedTitle = body.title.trim()
+    if (!trimmedTitle) return NextResponse.json({ error: 'Title is required.' }, { status: 400 })
+    update.title = trimmedTitle
+  }
+  if (typeof body.expectedResult === 'string') {
+    const trimmedExpected = body.expectedResult.trim()
+    if (!trimmedExpected) return NextResponse.json({ error: 'Expected result is required.' }, { status: 400 })
+    update.expectedResult = trimmedExpected
+  }
   if (Array.isArray(body.steps)) update.steps = body.steps.filter((s: string) => s.trim().length > 0)
   if (typeof body.orderIndex === 'number') update.orderIndex = body.orderIndex
 

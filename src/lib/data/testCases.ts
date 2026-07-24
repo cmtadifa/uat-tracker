@@ -10,7 +10,7 @@ function testCasesKey(projectId: string): string {
 export async function listTestCases(projectId: string): Promise<TestCaseMeta[]> {
   const store = getDataStore()
   const testCases = await store.get(testCasesKey(projectId), { type: 'json' })
-  return (testCases as TestCaseMeta[] | null) ?? []
+  return ((testCases as TestCaseMeta[] | null) ?? []).sort((a, b) => a.orderIndex - b.orderIndex)
 }
 
 export async function createTestCase(

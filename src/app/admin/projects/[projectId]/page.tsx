@@ -62,7 +62,11 @@ export default function ProjectDetailPage() {
   }
 
   async function deleteTestCase(id: string) {
-    await fetch(`/api/admin/projects/${params.projectId}/test-cases/${id}`, { method: 'DELETE' })
+    const res = await fetch(`/api/admin/projects/${params.projectId}/test-cases/${id}`, { method: 'DELETE' })
+    if (!res.ok) {
+      setTcError('Failed to delete test case.')
+      return
+    }
     load()
   }
 
@@ -74,11 +78,15 @@ export default function ProjectDetailPage() {
   }
 
   async function saveEdit(id: string) {
-    await fetch(`/api/admin/projects/${params.projectId}/test-cases/${id}`, {
+    const res = await fetch(`/api/admin/projects/${params.projectId}/test-cases/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: editTitle, steps: editSteps.split('\n'), expectedResult: editExpected }),
     })
+    if (!res.ok) {
+      setTcError('Failed to save test case.')
+      return
+    }
     setEditingId(null)
     load()
   }
@@ -88,18 +96,24 @@ export default function ProjectDetailPage() {
     if (swapIndex < 0 || swapIndex >= testCases.length) return
     const a = testCases[index]
     const b = testCases[swapIndex]
-    await Promise.all([
-      fetch(`/api/admin/projects/${params.projectId}/test-cases/${a.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderIndex: b.orderIndex }),
-      }),
-      fetch(`/api/admin/projects/${params.projectId}/test-cases/${b.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderIndex: a.orderIndex }),
-      }),
-    ])
+    const resA = await fetch(`/api/admin/projects/${params.projectId}/test-cases/${a.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderIndex: b.orderIndex }),
+    })
+    if (!resA.ok) {
+      setTcError('Failed to reorder test case.')
+      return
+    }
+    const resB = await fetch(`/api/admin/projects/${params.projectId}/test-cases/${b.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderIndex: a.orderIndex }),
+    })
+    if (!resB.ok) {
+      setTcError('Failed to reorder test case.')
+      return
+    }
     load()
   }
 
@@ -172,9 +186,9 @@ export default function ProjectDetailPage() {
             <li key={tc.id} className="border rounded p-3">
               {editingId === tc.id ? (
                 <div className="flex flex-col gap-2">
-                  <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="border rounded p-2" />
+                  <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} required className="border rounded p-2" />
                   <textarea value={editSteps} onChange={(e) => setEditSteps(e.target.value)} rows={3} className="border rounded p-2" />
-                  <textarea value={editExpected} onChange={(e) => setEditExpected(e.target.value)} rows={2} className="border rounded p-2" />
+                  <textarea value={editExpected} onChange={(e) => setEditExpected(e.target.value)} required rows={2} className="border rounded p-2" />
                   <div className="flex gap-2">
                     <button onClick={() => saveEdit(tc.id)} className="bg-black text-white rounded px-3 py-1">
                       Save
