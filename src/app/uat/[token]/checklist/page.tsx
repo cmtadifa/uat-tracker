@@ -45,10 +45,21 @@ export default function ChecklistPage() {
   const total = items.length
   const completed = passed + failed
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0
+  const allDone = total > 0 && completed === total
 
   return (
     <Container>
       <TesterHeader projectName={projectName} testerName={testerName} />
+
+      {allDone && (
+        <Card className="mb-6 border-success/30 bg-success-bg text-center">
+          <p className="text-lg font-semibold text-success">🎉 Thank you for your responses!</p>
+          <p className="mt-1 text-sm text-success">
+            You&apos;ve gone through all {total} test case{total === 1 ? '' : 's'}. You can still open any item
+            below to review or change your answer.
+          </p>
+        </Card>
+      )}
 
       {total > 0 && (
         <div className="mb-6">
@@ -70,9 +81,11 @@ export default function ChecklistPage() {
         </Card>
       ) : (
         <>
-          <p className="mb-3 text-sm text-muted-foreground">
-            Tap any item below to see its steps and mark it Passed or Failed.
-          </p>
+          {!allDone && (
+            <p className="mb-3 text-sm text-muted-foreground">
+              Tap any item below to see its steps and mark it Passed or Failed.
+            </p>
+          )}
           <ul className="flex flex-col gap-2">
             {items.map((item) => (
               <li
