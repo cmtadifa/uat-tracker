@@ -8,6 +8,16 @@ interface TestCaseWithResult extends TestCaseMeta {
   result: Result
 }
 
+function statusBadge(status: string) {
+  const styles: Record<string, string> = {
+    not_started: 'bg-gray-200 text-gray-700',
+    passed: 'bg-green-100 text-green-800',
+    failed: 'bg-red-100 text-red-800',
+  }
+  const labels: Record<string, string> = { not_started: 'Not Started', passed: 'Passed', failed: 'Failed' }
+  return <span className={`text-xs rounded px-2 py-1 ${styles[status]}`}>{labels[status]}</span>
+}
+
 export default function ProjectDetailPage() {
   const params = useParams<{ projectId: string }>()
   const [project, setProject] = useState<Project | null>(null)
@@ -209,6 +219,30 @@ export default function ProjectDetailPage() {
                   <p className="text-sm mt-1">
                     <span className="font-medium">Expected:</span> {tc.expectedResult}
                   </p>
+                  <div className="mt-2 flex items-center gap-2">
+                    {statusBadge(tc.result.status)}
+                    {tc.result.testerName && (
+                      <span className="text-xs text-gray-500">
+                        by {tc.result.testerName} · {new Date(tc.result.updatedAt).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                  {tc.result.status === 'failed' && tc.result.failReason && (
+                    <p className="text-sm text-red-700 mt-1">Reason: {tc.result.failReason}</p>
+                  )}
+                  {tc.result.screenshots.length > 0 && (
+                    <div className="flex gap-2 mt-2 flex-wrap">
+                      {tc.result.screenshots.map((s) => (
+                        <a key={s.id} href={`/api/admin/screenshots/${s.storagePath}`} target="_blank" rel="noreferrer">
+                          <img
+                            src={`/api/admin/screenshots/${s.storagePath}`}
+                            alt="Evidence screenshot"
+                            className="h-16 w-16 object-cover rounded border"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  )}
                   <div className="flex gap-2 mt-2">
                     <button onClick={() => moveTestCase(index, 'up')} className="border rounded px-2">
                       ↑
