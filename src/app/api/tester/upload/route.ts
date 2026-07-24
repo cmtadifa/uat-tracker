@@ -29,13 +29,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Test case not found.' }, { status: 404 })
   }
 
-  const evidenceStore = getEvidenceStore()
-  const uploaded: string[] = []
+  // Pass 1: validate every file in the batch before persisting anything.
+  // This prevents a later invalid file from causing earlier valid files to
+  // have already been durably written when the request ultimately fails.
   for (const file of files) {
     const validation = validateScreenshotFile({ type: file.type, size: file.size })
     if (!validation.valid) {
       return NextResponse.json({ error: validation.error }, { status: 400 })
     }
+  }
+
+  // Pass 2: all files passed validation, so it's safe to upload and record them.
+  const evidenceStore = getEvidenceStore()
+  const uploaded: string[] = []
+  for (const file of files) {
     const storagePath = `${project.id}/${testCaseId}/${randomUUID()}-${file.name}`
     const arrayBuffer = await file.arrayBuffer()
     await evidenceStore.set(storagePath, arrayBuffer, { metadata: { contentType: file.type } })
