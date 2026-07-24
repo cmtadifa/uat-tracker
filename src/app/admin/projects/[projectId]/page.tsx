@@ -2,68 +2,23 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
+import type { Project, TestCaseMeta, Result } from '@/lib/types'
 
-interface ScreenshotDto { id: string; storagePath: string; uploadedAt: string }
-interface TestCaseDto {
-  id: string
-  title: string
-  steps: string[]
-  expectedResult: string
-  orderIndex: number
-  result: {
-    id: string
-    status: string
-    testerName: string | null
-    failReason: string | null
-    updatedAt: string
-    screenshots: ScreenshotDto[]
-  }
-}
-interface ProjectDetail {
-  id: string
-  name: string
-  description: string | null
-  inviteToken: string
-  inviteActive: boolean
+interface TestCaseWithResult extends TestCaseMeta {
+  result: Result
 }
 
 export default function ProjectDetailPage() {
   const params = useParams<{ projectId: string }>()
-  const [project, setProject] = useState<ProjectDetail | null>(null)
-  const [testCases, setTestCases] = useState<TestCaseDto[]>([])
+  const [project, setProject] = useState<Project | null>(null)
+  const [testCases, setTestCases] = useState<TestCaseWithResult[]>([])
 
   async function load() {
     const res = await fetch(`/api/admin/projects/${params.projectId}`)
     const data = await res.json()
     if (!res.ok) return
-    setProject({
-      id: data.project.id,
-      name: data.project.name,
-      description: data.project.description,
-      inviteToken: data.project.invite_token,
-      inviteActive: data.project.invite_active,
-    })
-    setTestCases(
-      (data.testCases ?? []).map((tc: any) => ({
-        id: tc.id,
-        title: tc.title,
-        steps: tc.steps,
-        expectedResult: tc.expected_result,
-        orderIndex: tc.order_index,
-        result: {
-          id: tc.results.id,
-          status: tc.results.status,
-          testerName: tc.results.tester_name,
-          failReason: tc.results.fail_reason,
-          updatedAt: tc.results.updated_at,
-          screenshots: (tc.results.screenshots ?? []).map((s: any) => ({
-            id: s.id,
-            storagePath: s.storage_path,
-            uploadedAt: s.uploaded_at,
-          })),
-        },
-      }))
-    )
+    setProject(data.project)
+    setTestCases(data.testCases)
   }
 
   useEffect(() => {
