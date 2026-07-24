@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { findProjectByInviteToken } from '@/lib/data/projects'
+import { findInviteByToken } from '@/lib/data/invites'
 import { listTestCases } from '@/lib/data/testCases'
 import { getResult } from '@/lib/data/results'
 import { verifyTesterSession } from '@/lib/tester/session'
@@ -14,21 +14,21 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
     return NextResponse.json({ error: 'Not joined.' }, { status: 401 })
   }
 
-  const project = await findProjectByInviteToken(token)
-  if (!project || !project.inviteActive) {
+  const found = await findInviteByToken(token)
+  if (!found || !found.invite.active) {
     return NextResponse.json({ error: 'This UAT link is no longer active.' }, { status: 410 })
   }
 
-  const testCaseMetas = await listTestCases(project.id)
+  const testCaseMetas = await listTestCases(found.project.id)
   const testCases = await Promise.all(
     testCaseMetas.map(async (tc) => {
-      const result = await getResult(tc.id)
+      const result = await getResult(token, tc.id)
       return { id: tc.id, title: tc.title, status: result?.status ?? 'not_started' }
     })
   )
 
   return NextResponse.json({
-    projectName: project.name,
+    projectName: found.project.name,
     testerName: session.testerName,
     testCases,
   })

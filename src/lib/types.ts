@@ -4,8 +4,15 @@ export interface Project {
   id: string
   name: string
   description: string | null
-  inviteToken: string
-  inviteActive: boolean
+  createdAt: string
+}
+
+export interface Invite {
+  id: string
+  token: string
+  testerName: string | null
+  claimedAt: string | null
+  active: boolean
   createdAt: string
 }
 
@@ -15,6 +22,7 @@ export interface TestCaseMeta {
   steps: string[]
   expectedResult: string
   orderIndex: number
+  suggestion: string | null
 }
 
 export interface Screenshot {
@@ -26,10 +34,10 @@ export interface Screenshot {
 export interface Result {
   id: string
   testCaseId: string
+  inviteToken: string
   status: Status
   testerName: string | null
   failReason: string | null
-  suggestion: string | null
   updatedAt: string
   screenshots: Screenshot[]
 }

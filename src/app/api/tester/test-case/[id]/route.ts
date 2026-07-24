@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { findProjectByInviteToken } from '@/lib/data/projects'
+import { findInviteByToken } from '@/lib/data/invites'
 import { listTestCases } from '@/lib/data/testCases'
 import { getResult, updateResult } from '@/lib/data/results'
 import { verifyTesterSession, type TesterSessionPayload } from '@/lib/tester/session'
 import { validateStatusUpdate } from '@/lib/validation'
-import type { Project } from '@/lib/types'
+import type { Project, Invite } from '@/lib/types'
 
 async function getVerifiedSession(): Promise<TesterSessionPayload | null> {
   const cookieStore = await cookies()
@@ -13,9 +13,11 @@ async function getVerifiedSession(): Promise<TesterSessionPayload | null> {
   return sessionCookie ? verifyTesterSession(sessionCookie) : null
 }
 
-async function getActiveProjectForSession(session: TesterSessionPayload): Promise<Project | null> {
-  const project = await findProjectByInviteToken(session.projectToken)
-  return project && project.inviteActive ? project : null
+async function getActiveInviteForSession(
+  session: TesterSessionPayload
+): Promise<{ project: Project; invite: Invite } | null> {
+  const found = await findInviteByToken(session.projectToken)
+  return found && found.invite.active ? found : null
 }
 
 async function findTestCaseInProject(projectId: string, testCaseId: string) {
@@ -27,13 +29,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const { id } = await params
   const session = await getVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Not authorized.' }, { status: 401 })
-  const project = await getActiveProjectForSession(session)
-  if (!project) return NextResponse.json({ error: 'Not authorized.' }, { status: 401 })
+  const found = await getActiveInviteForSession(session)
+  if (!found) return NextResponse.json({ error: 'Not authorized.' }, { status: 401 })
 
-  const testCase = await findTestCaseInProject(project.id, id)
+  const testCase = await findTestCaseInProject(found.project.id, id)
   if (!testCase) return NextResponse.json({ error: 'Test case not found.' }, { status: 404 })
 
-  const result = await getResult(id)
+  const result = await getResult(found.invite.token, id)
 
   return NextResponse.json({
     id: testCase.id,
@@ -49,8 +51,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id } = await params
   const session = await getVerifiedSession()
   if (!session) return NextResponse.json({ error: 'Not authorized.' }, { status: 401 })
-  const project = await getActiveProjectForSession(session)
-  if (!project) return NextResponse.json({ error: 'Not authorized.' }, { status: 401 })
+  const found = await getActiveInviteForSession(session)
+  if (!found) return NextResponse.json({ error: 'Not authorized.' }, { status: 401 })
 
   const body = await request.json()
   const status = body.status
@@ -62,9 +64,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const validation = validateStatusUpdate({ status, failReason })
   if (!validation.valid) return NextResponse.json({ error: validation.error }, { status: 400 })
 
-  const testCase = await findTestCaseInProject(project.id, id)
+  const testCase = await findTestCaseInProject(found.project.id, id)
   if (!testCase) return NextResponse.json({ error: 'Test case not found.' }, { status: 404 })
 
-  await updateResult(id, { status, testerName: session.testerName, failReason })
+  await updateResult(found.invite.token, id, { status, testerName: session.testerName, failReason })
   return NextResponse.json({ ok: true })
 }

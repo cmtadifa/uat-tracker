@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { findProjectByInviteToken } from '@/lib/data/projects'
+import { findInviteByToken, claimInvite } from '@/lib/data/invites'
 import { signTesterSession } from '@/lib/tester/session'
 
 export async function POST(request: Request) {
@@ -15,8 +15,13 @@ export async function POST(request: Request) {
   if (!name) return NextResponse.json({ error: 'Name is required.' }, { status: 400 })
   if (name.length > 100) return NextResponse.json({ error: 'Name is too long.' }, { status: 400 })
 
-  const project = await findProjectByInviteToken(token)
-  if (!project || !project.inviteActive) {
+  const found = await findInviteByToken(token)
+  if (!found || !found.invite.active || found.invite.claimedAt) {
+    return NextResponse.json({ error: 'This UAT link is no longer active.' }, { status: 410 })
+  }
+
+  const claimed = await claimInvite(found.project.id, token, name)
+  if (!claimed) {
     return NextResponse.json({ error: 'This UAT link is no longer active.' }, { status: 410 })
   }
 

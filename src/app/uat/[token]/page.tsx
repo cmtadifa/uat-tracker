@@ -1,15 +1,15 @@
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
-import { findProjectByInviteToken } from '@/lib/data/projects'
+import { findInviteByToken } from '@/lib/data/invites'
 import { listTestCases } from '@/lib/data/testCases'
 import { verifyTesterSession } from '@/lib/tester/session'
 import JoinForm from './JoinForm'
 
 export default async function JoinPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
-  const project = await findProjectByInviteToken(token)
+  const found = await findInviteByToken(token)
 
-  if (!project || !project.inviteActive) {
+  if (!found || !found.invite.active) {
     redirect(`/uat/${token}/invalid`)
   }
 
@@ -20,13 +20,17 @@ export default async function JoinPage({ params }: { params: Promise<{ token: st
     redirect(`/uat/${token}/checklist`)
   }
 
-  const testCases = await listTestCases(project.id)
+  if (found.invite.claimedAt) {
+    redirect(`/uat/${token}/invalid`)
+  }
+
+  const testCases = await listTestCases(found.project.id)
 
   return (
     <JoinForm
       token={token}
-      projectName={project.name}
-      projectDescription={project.description}
+      projectName={found.project.name}
+      projectDescription={found.project.description}
       testCaseCount={testCases.length}
     />
   )

@@ -12,9 +12,9 @@ interface ProjectSummary {
   id: string
   name: string
   description: string | null
-  inviteToken: string
-  inviteActive: boolean
   createdAt: string
+  inviteCount: number
+  claimedInviteCount: number
   counts: { notStarted: number; passed: number; failed: number; total: number }
 }
 
@@ -106,9 +106,9 @@ export default function DashboardPage() {
                   <p className="mt-1 text-sm text-muted-foreground">
                     {p.counts.passed} passed · {p.counts.failed} failed · {p.counts.notStarted} not started
                   </p>
-                  {!p.inviteActive && (
-                    <p className="mt-2 text-xs font-medium text-muted-foreground">Invite revoked</p>
-                  )}
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {p.claimedInviteCount} of {p.inviteCount} invite{p.inviteCount === 1 ? '' : 's'} used
+                  </p>
                 </div>
               </Card>
             </Link>

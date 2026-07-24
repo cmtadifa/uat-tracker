@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import type { Project, TestCaseMeta, Result } from '@/lib/types'
+import type { Project, TestCaseMeta, Result, Invite } from '@/lib/types'
 import Container from '@/components/ui/Container'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
@@ -10,14 +10,15 @@ import { Input, Textarea } from '@/components/ui/Input'
 import ErrorText from '@/components/ui/ErrorText'
 import StatusBadge from '@/components/ui/Badge'
 
-interface TestCaseWithResult extends TestCaseMeta {
-  result: Result
+interface TestCaseWithResults extends TestCaseMeta {
+  results: { invite: Invite; result: Result }[]
 }
 
 export default function ProjectDetailPage() {
   const params = useParams<{ projectId: string }>()
   const [project, setProject] = useState<Project | null>(null)
-  const [testCases, setTestCases] = useState<TestCaseWithResult[]>([])
+  const [invites, setInvites] = useState<Invite[]>([])
+  const [testCases, setTestCases] = useState<TestCaseWithResults[]>([])
   const [newTitle, setNewTitle] = useState('')
   const [newSteps, setNewSteps] = useState('')
   const [newExpected, setNewExpected] = useState('')
@@ -28,12 +29,14 @@ export default function ProjectDetailPage() {
   const [editExpected, setEditExpected] = useState('')
   const [suggestionDrafts, setSuggestionDrafts] = useState<Record<string, string>>({})
   const [savingSuggestion, setSavingSuggestion] = useState<string | null>(null)
+  const [creatingInvite, setCreatingInvite] = useState(false)
 
   async function load() {
     const res = await fetch(`/api/admin/projects/${params.projectId}`)
     const data = await res.json()
     if (!res.ok) return
     setProject(data.project)
+    setInvites(data.invites)
     setTestCases(data.testCases)
   }
 
@@ -41,11 +44,18 @@ export default function ProjectDetailPage() {
     load()
   }, [params.projectId])
 
-  async function inviteAction(action: 'regenerate' | 'revoke' | 'reactivate') {
-    await fetch(`/api/admin/projects/${params.projectId}/invite`, {
-      method: 'POST',
+  async function generateInvite() {
+    setCreatingInvite(true)
+    await fetch(`/api/admin/projects/${params.projectId}/invites`, { method: 'POST' })
+    setCreatingInvite(false)
+    load()
+  }
+
+  async function setInviteActive(inviteId: string, active: boolean) {
+    await fetch(`/api/admin/projects/${params.projectId}/invites/${inviteId}`, {
+      method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action }),
+      body: JSON.stringify({ active }),
     })
     load()
   }
@@ -78,7 +88,7 @@ export default function ProjectDetailPage() {
     load()
   }
 
-  function startEdit(tc: TestCaseWithResult) {
+  function startEdit(tc: TestCaseWithResults) {
     setEditingId(tc.id)
     setEditTitle(tc.title)
     setEditSteps(tc.steps.join('\n'))
@@ -127,9 +137,9 @@ export default function ProjectDetailPage() {
 
   async function saveSuggestion(tcId: string) {
     const tc = testCases.find((t) => t.id === tcId)
-    const value = suggestionDrafts[tcId] ?? tc?.result.suggestion ?? ''
+    const value = suggestionDrafts[tcId] ?? tc?.suggestion ?? ''
     setSavingSuggestion(tcId)
-    await fetch(`/api/admin/projects/${params.projectId}/test-cases/${tcId}/suggestion`, {
+    await fetch(`/api/admin/projects/${params.projectId}/test-cases/${tcId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ suggestion: value }),
@@ -144,10 +154,10 @@ export default function ProjectDetailPage() {
 
   if (!project) return <Container className="text-muted-foreground">Loading…</Container>
 
-  const inviteUrl = typeof window !== 'undefined' ? `${window.location.origin}/uat/${project.inviteToken}` : ''
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
 
   return (
-    <Container size="lg">
+    <Container size="xl">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">{project.name}</h1>
@@ -159,26 +169,49 @@ export default function ProjectDetailPage() {
       </div>
 
       <Card className="mb-6">
-        <h2 className="mb-2 font-medium">Invite Link</h2>
-        {project.inviteActive ? (
-          <p className="mb-3 break-all rounded-lg bg-muted px-3 py-2 text-sm">{inviteUrl}</p>
-        ) : (
-          <p className="mb-3 text-sm text-muted-foreground">Link revoked</p>
-        )}
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => inviteAction('regenerate')}>
-            Regenerate
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-medium">Invitations</h2>
+          <Button variant="secondary" onClick={generateInvite} disabled={creatingInvite}>
+            {creatingInvite ? 'Generating…' : '+ Generate New Invite Link'}
           </Button>
-          {project.inviteActive ? (
-            <Button variant="secondary" onClick={() => inviteAction('revoke')}>
-              Revoke
-            </Button>
-          ) : (
-            <Button variant="secondary" onClick={() => inviteAction('reactivate')}>
-              Reactivate
-            </Button>
-          )}
         </div>
+        <p className="mb-3 text-sm text-muted-foreground">
+          Each link works for one tester only — once someone joins with it, it can&apos;t be used by anyone else.
+          Generate a new link for each person you want to invite.
+        </p>
+        {invites.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No invite links yet.</p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {invites.map((invite) => (
+              <li
+                key={invite.id}
+                className="flex flex-col gap-2 rounded-lg border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0 flex-1">
+                  {invite.claimedAt ? (
+                    <p className="text-sm">
+                      <span className="font-medium">Claimed by {invite.testerName}</span>{' '}
+                      <span className="text-muted-foreground">· {new Date(invite.claimedAt).toLocaleString()}</span>
+                    </p>
+                  ) : (
+                    <p className="break-all rounded bg-muted px-2 py-1 font-mono text-xs">
+                      {origin}/uat/{invite.token}
+                    </p>
+                  )}
+                  {!invite.active && <p className="mt-1 text-xs font-medium text-danger">Revoked</p>}
+                </div>
+                <Button
+                  variant="secondary"
+                  onClick={() => setInviteActive(invite.id, !invite.active)}
+                  className="self-start sm:self-auto"
+                >
+                  {invite.active ? 'Revoke' : 'Reactivate'}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
       </Card>
 
       <Card className="mb-6">
@@ -210,115 +243,129 @@ export default function ProjectDetailPage() {
       </Card>
 
       <h2 className="mb-3 font-medium">Test Cases ({testCases.length})</h2>
-      <ul className="flex flex-col gap-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {testCases.map((tc, index) => (
-          <li key={tc.id}>
-            <Card>
-              {editingId === tc.id ? (
-                <div className="flex flex-col gap-2">
-                  <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} required />
-                  <Textarea value={editSteps} onChange={(e) => setEditSteps(e.target.value)} rows={3} />
-                  <Textarea value={editExpected} onChange={(e) => setEditExpected(e.target.value)} required rows={2} />
-                  <div className="flex gap-2">
-                    <Button onClick={() => saveEdit(tc.id)}>Save</Button>
-                    <Button variant="secondary" onClick={() => setEditingId(null)}>
-                      Cancel
-                    </Button>
-                  </div>
+          <Card key={tc.id} className="h-fit">
+            {editingId === tc.id ? (
+              <div className="flex flex-col gap-2">
+                <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} required />
+                <Textarea value={editSteps} onChange={(e) => setEditSteps(e.target.value)} rows={3} />
+                <Textarea value={editExpected} onChange={(e) => setEditExpected(e.target.value)} required rows={2} />
+                <div className="flex gap-2">
+                  <Button onClick={() => saveEdit(tc.id)}>Save</Button>
+                  <Button variant="secondary" onClick={() => setEditingId(null)}>
+                    Cancel
+                  </Button>
                 </div>
-              ) : (
-                <>
-                  <p className="font-medium">{tc.title}</p>
-                  <ol className="list-inside list-decimal text-sm text-muted-foreground">
-                    {tc.steps.map((s, i) => (
-                      <li key={i}>{s}</li>
-                    ))}
-                  </ol>
-                  <p className="mt-1 text-sm">
-                    <span className="font-medium">Expected:</span> {tc.expectedResult}
+              </div>
+            ) : (
+              <>
+                <p className="font-medium">{tc.title}</p>
+                <ol className="list-inside list-decimal text-sm text-muted-foreground">
+                  {tc.steps.map((s, i) => (
+                    <li key={i}>{s}</li>
+                  ))}
+                </ol>
+                <p className="mt-1 text-sm">
+                  <span className="font-medium">Expected:</span> {tc.expectedResult}
+                </p>
+
+                <div className="mt-3 border-t border-border pt-3">
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {tc.results.length === 0
+                      ? 'No testers yet'
+                      : `${tc.results.length} tester${tc.results.length === 1 ? '' : 's'}`}
                   </p>
-
-                  <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
-                    <StatusBadge status={tc.result.status} />
-                    {tc.result.testerName && (
-                      <span className="text-xs text-muted-foreground">
-                        by {tc.result.testerName} · {new Date(tc.result.updatedAt).toLocaleString()}
-                      </span>
-                    )}
-                  </div>
-
-                  {tc.result.status === 'failed' && tc.result.failReason && (
-                    <p className="mt-2 rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger">
-                      Reason: {tc.result.failReason}
+                  {tc.results.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      No one has joined and tested this yet.
                     </p>
-                  )}
-
-                  {tc.result.screenshots.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {tc.result.screenshots.map((s) => (
-                        <a key={s.id} href={`/api/admin/screenshots/${s.storagePath}`} target="_blank" rel="noreferrer">
-                          <img
-                            src={`/api/admin/screenshots/${s.storagePath}`}
-                            alt="Evidence screenshot"
-                            className="h-16 w-16 rounded-lg border border-border object-cover"
-                          />
-                        </a>
+                  ) : (
+                    <ul className="flex flex-col gap-2">
+                      {tc.results.map(({ invite, result }) => (
+                        <li key={invite.id} className="rounded-lg bg-muted p-2.5">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <StatusBadge status={result.status} />
+                            <span className="text-xs text-muted-foreground">
+                              {invite.testerName} · {new Date(result.updatedAt).toLocaleString()}
+                            </span>
+                          </div>
+                          {result.status === 'failed' && result.failReason && (
+                            <p className="mt-2 rounded-lg bg-danger-bg px-3 py-2 text-sm text-danger">
+                              Reason: {result.failReason}
+                            </p>
+                          )}
+                          {result.screenshots.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {result.screenshots.map((s) => (
+                                <a
+                                  key={s.id}
+                                  href={`/api/admin/screenshots/${s.storagePath}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  <img
+                                    src={`/api/admin/screenshots/${s.storagePath}`}
+                                    alt="Evidence screenshot"
+                                    className="h-16 w-16 rounded-lg border border-border object-cover"
+                                  />
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </li>
                       ))}
-                    </div>
+                    </ul>
                   )}
+                </div>
 
-                  <div className="mt-3">
-                    <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                      Suggested fix / improvement
-                    </label>
-                    <Textarea
-                      value={suggestionDrafts[tc.id] ?? tc.result.suggestion ?? ''}
-                      onChange={(e) => setSuggestionDrafts((prev) => ({ ...prev, [tc.id]: e.target.value }))}
-                      placeholder="Optional note for the team, included in the exported report"
-                      rows={2}
-                      className="mb-2"
-                    />
-                    <Button
-                      variant="secondary"
-                      onClick={() => saveSuggestion(tc.id)}
-                      disabled={savingSuggestion === tc.id}
+                <div className="mt-3 border-t border-border pt-3">
+                  <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Suggested fix / improvement
+                  </label>
+                  <Textarea
+                    value={suggestionDrafts[tc.id] ?? tc.suggestion ?? ''}
+                    onChange={(e) => setSuggestionDrafts((prev) => ({ ...prev, [tc.id]: e.target.value }))}
+                    placeholder="Optional note for the team, included in the exported report"
+                    rows={2}
+                    className="mb-2"
+                  />
+                  <Button variant="secondary" onClick={() => saveSuggestion(tc.id)} disabled={savingSuggestion === tc.id}>
+                    {savingSuggestion === tc.id ? 'Saving…' : 'Save Suggestion'}
+                  </Button>
+                </div>
+
+                <div className="mt-4 flex items-center gap-2 border-t border-border pt-3">
+                  <div className="inline-flex overflow-hidden rounded-lg border border-border">
+                    <button
+                      onClick={() => moveTestCase(index, 'up')}
+                      disabled={index === 0}
+                      aria-label="Move up"
+                      className="px-2.5 py-1.5 text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      {savingSuggestion === tc.id ? 'Saving…' : 'Save Suggestion'}
-                    </Button>
+                      ↑
+                    </button>
+                    <button
+                      onClick={() => moveTestCase(index, 'down')}
+                      disabled={index === testCases.length - 1}
+                      aria-label="Move down"
+                      className="border-l border-border px-2.5 py-1.5 text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      ↓
+                    </button>
                   </div>
-
-                  <div className="mt-4 flex items-center gap-2 border-t border-border pt-3">
-                    <div className="inline-flex overflow-hidden rounded-lg border border-border">
-                      <button
-                        onClick={() => moveTestCase(index, 'up')}
-                        disabled={index === 0}
-                        aria-label="Move up"
-                        className="px-2.5 py-1.5 text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        ↑
-                      </button>
-                      <button
-                        onClick={() => moveTestCase(index, 'down')}
-                        disabled={index === testCases.length - 1}
-                        aria-label="Move down"
-                        className="border-l border-border px-2.5 py-1.5 text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        ↓
-                      </button>
-                    </div>
-                    <Button variant="secondary" onClick={() => startEdit(tc)}>
-                      Edit
-                    </Button>
-                    <Button variant="danger" onClick={() => deleteTestCase(tc.id)}>
-                      Delete
-                    </Button>
-                  </div>
-                </>
-              )}
-            </Card>
-          </li>
+                  <Button variant="secondary" onClick={() => startEdit(tc)}>
+                    Edit
+                  </Button>
+                  <Button variant="danger" onClick={() => deleteTestCase(tc.id)}>
+                    Delete
+                  </Button>
+                </div>
+              </>
+            )}
+          </Card>
         ))}
-      </ul>
+      </div>
     </Container>
   )
 }
