@@ -41,8 +41,8 @@ export default function TestCaseDetailPage() {
   useEffect(() => {
     async function load() {
       const [tcRes, listRes] = await Promise.all([
-        fetch(`/api/tester/test-case/${params.testCaseId}`),
-        fetch(`/api/tester/checklist/${params.token}`),
+        fetch(`/api/tester/test-case/${params.testCaseId}`, { cache: 'no-store' }),
+        fetch(`/api/tester/checklist/${params.token}`, { cache: 'no-store' }),
       ])
       const tcData = await tcRes.json()
       if (!tcRes.ok) {

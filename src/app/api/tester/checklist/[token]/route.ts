@@ -5,6 +5,9 @@ import { listTestCases } from '@/lib/data/testCases'
 import { getResult } from '@/lib/data/results'
 import { verifyTesterSession } from '@/lib/tester/session'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function GET(_request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
   const cookieStore = await cookies()

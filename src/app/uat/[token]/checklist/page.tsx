@@ -24,17 +24,29 @@ export default function ChecklistPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch(`/api/tester/checklist/${params.token}`).then(async (res) => {
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data.error)
-        return
-      }
-      setProjectName(data.projectName)
-      setTesterName(data.testerName)
-      setItems(data.testCases)
-      setLoaded(true)
-    })
+    function load() {
+      fetch(`/api/tester/checklist/${params.token}`, { cache: 'no-store' }).then(async (res) => {
+        const data = await res.json()
+        if (!res.ok) {
+          setError(data.error)
+          return
+        }
+        setProjectName(data.projectName)
+        setTesterName(data.testerName)
+        setItems(data.testCases)
+        setLoaded(true)
+      })
+    }
+    load()
+    function onVisible() {
+      if (document.visibilityState === 'visible') load()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', load)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', load)
+    }
   }, [params.token])
 
   if (error) return <Container className="text-muted-foreground">{error}</Container>

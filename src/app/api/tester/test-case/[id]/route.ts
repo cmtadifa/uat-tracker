@@ -7,6 +7,9 @@ import { verifyTesterSession, type TesterSessionPayload } from '@/lib/tester/ses
 import { validateStatusUpdate } from '@/lib/validation'
 import type { Project } from '@/lib/types'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 async function getVerifiedSession(): Promise<TesterSessionPayload | null> {
   const cookieStore = await cookies()
   const sessionCookie = cookieStore.get('uat_tester_session')?.value
