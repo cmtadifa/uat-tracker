@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button'
 import { Textarea } from '@/components/ui/Input'
 import ErrorText from '@/components/ui/ErrorText'
 import TesterHeader from '@/components/TesterHeader'
+import StepProgress from '@/components/StepProgress'
 
 interface TestCaseDetail {
   id: string
@@ -24,6 +25,9 @@ interface ChecklistItem {
   title: string
   status: string
 }
+
+const OUTLINE_BASE =
+  'inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-4 py-2.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50'
 
 export default function TestCaseDetailPage() {
   const params = useParams<{ token: string; testCaseId: string }>()
@@ -64,6 +68,7 @@ export default function TestCaseDetailPage() {
   }, [params.testCaseId, params.token])
 
   const currentIndex = checklist.findIndex((i) => i.id === params.testCaseId)
+  const prevItem = currentIndex > 0 ? checklist[currentIndex - 1] : undefined
   const nextItem = currentIndex >= 0 ? checklist[currentIndex + 1] : undefined
 
   function goNext() {
@@ -110,124 +115,154 @@ export default function TestCaseDetailPage() {
   if (!testCase) return <Container className="text-muted-foreground">Loading…</Container>
 
   return (
-    <Container>
-      {projectName && <TesterHeader projectName={projectName} testerName={testerName} />}
-
-      {checklist.length > 0 && (
-        <div className="mb-6">
-          <div className="mb-2 flex items-center justify-between text-sm">
-            <Link href={`/uat/${params.token}/checklist`} className="text-accent hover:underline">
-              ← Back to checklist
-            </Link>
-            {currentIndex >= 0 && (
-              <span className="text-muted-foreground">
-                Question {currentIndex + 1} of {checklist.length}
-              </span>
-            )}
-          </div>
-          <div className="flex gap-1.5">
-            {checklist.map((item, i) => {
-              const isCurrent = item.id === params.testCaseId
-              const dotColor =
-                item.status === 'passed' ? 'bg-success' : item.status === 'failed' ? 'bg-danger' : 'bg-muted'
-              return (
-                <Link
-                  key={item.id}
-                  href={`/uat/${params.token}/test-case/${item.id}`}
-                  title={`${i + 1}. ${item.title}`}
-                  className={`h-2 flex-1 rounded-full ${dotColor} ${
-                    isCurrent ? 'ring-2 ring-accent ring-offset-2 ring-offset-background' : ''
-                  }`}
-                />
-              )
-            })}
-          </div>
-        </div>
+    <>
+      {checklist.length > 0 && currentIndex >= 0 && (
+        <StepProgress step={currentIndex + 2} total={checklist.length + 1} />
       )}
+      <Container>
+        {projectName && <TesterHeader projectName={projectName} testerName={testerName} />}
 
-      <h2 className="mb-3 text-xl font-semibold">{testCase.title}</h2>
-      <Card className="mb-4">
-        <ol className="list-inside list-decimal">
-          {testCase.steps.map((s, i) => (
-            <li key={i}>{s}</li>
-          ))}
-        </ol>
-        <p className="mt-3 text-sm">
-          <span className="font-medium">Expected result:</span> {testCase.expectedResult}
-        </p>
-      </Card>
-
-      <p className="mb-3 text-sm text-muted-foreground">
-        Follow the steps above. Does the app behave as expected? Mark it Passed, or Failed if it doesn&apos;t. You
-        can also skip and come back to it later.
-      </p>
-
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <Button variant="success" onClick={() => submit('passed')} disabled={submitting}>
-          Pass
-        </Button>
-        {!showFailForm && (
-          <Button variant="danger" onClick={() => setShowFailForm(true)} disabled={submitting}>
-            Fail
-          </Button>
-        )}
-        <button
-          onClick={goNext}
-          disabled={submitting}
-          className="text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
-        >
-          Skip for now →
-        </button>
-      </div>
-
-      {showFailForm && (
-        <Card>
-          <label className="mb-2 block font-medium">Fail with a reason</label>
-          <p className="mb-2 text-sm text-muted-foreground">Describe what went wrong so the team can reproduce it.</p>
-          <Textarea
-            value={failReason}
-            onChange={(e) => setFailReason(e.target.value)}
-            rows={3}
-            placeholder="What went wrong?"
-            className="mb-3"
-            autoFocus
-          />
-          <label className="mb-1 block text-sm font-medium">Screenshots (optional)</label>
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={(e) => setFiles(e.target.files)}
-            className="mb-3 block text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground hover:file:bg-border"
-          />
-          {files && files.length > 0 && (
-            <div className="mb-3 flex flex-wrap gap-2">
-              {Array.from(files).map((file, i) => (
-                <img
-                  key={i}
-                  src={URL.createObjectURL(file)}
-                  alt={`Selected screenshot ${i + 1}`}
-                  className="h-16 w-16 rounded-lg border border-border object-cover"
-                />
-              ))}
+        {checklist.length > 0 && (
+          <div className="mb-6">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <Link href={`/uat/${params.token}/checklist`} className="text-sm text-accent hover:underline">
+                ← Back to checklist
+              </Link>
+              {currentIndex >= 0 && (
+                <span className="inline-flex items-center rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-foreground">
+                  Question {currentIndex + 1} of {checklist.length}
+                </span>
+              )}
             </div>
-          )}
-          <div className="flex gap-2">
-            <Button variant="danger" onClick={() => submit('failed')} disabled={submitting}>
-              Submit Fail
-            </Button>
-            <Button variant="ghost" onClick={() => setShowFailForm(false)} disabled={submitting}>
-              Cancel
-            </Button>
+            <div className="flex gap-1.5">
+              {checklist.map((item, i) => {
+                const isCurrent = item.id === params.testCaseId
+                const dotColor =
+                  item.status === 'passed' ? 'bg-success' : item.status === 'failed' ? 'bg-danger' : 'bg-muted'
+                return (
+                  <Link
+                    key={item.id}
+                    href={`/uat/${params.token}/test-case/${item.id}`}
+                    title={`${i + 1}. ${item.title}`}
+                    className={`h-2 flex-1 rounded-full ${dotColor} ${
+                      isCurrent ? 'ring-2 ring-accent ring-offset-2 ring-offset-background' : ''
+                    }`}
+                  />
+                )
+              })}
+            </div>
           </div>
-        </Card>
-      )}
+        )}
 
-      {error && (
-        <div className="mt-4">
-          <ErrorText>{error}</ErrorText>
+        <h2 className="mb-3 text-xl font-semibold">{testCase.title}</h2>
+
+        <div className="mb-3 rounded-xl border border-accent/25 bg-accent/10 p-4">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-accent">Steps</p>
+          <ol className="list-inside list-decimal">
+            {testCase.steps.map((s, i) => (
+              <li key={i}>{s}</li>
+            ))}
+          </ol>
         </div>
-      )}
-    </Container>
+
+        <div className="mb-4 rounded-xl border border-border bg-muted p-4">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Expected Result</p>
+          <p className="text-sm">{testCase.expectedResult}</p>
+        </div>
+
+        <p className="mb-3 text-sm text-muted-foreground">
+          Follow the steps above. Does the app behave as expected? Mark it Passed, or Failed if it doesn&apos;t. You
+          can also skip and come back to it later.
+        </p>
+
+        <div className="mb-3 flex flex-wrap gap-2">
+          <button
+            onClick={() => submit('passed')}
+            disabled={submitting}
+            className={`${OUTLINE_BASE} border-success/40 bg-card text-success hover:bg-success-bg`}
+          >
+            <span aria-hidden>✓</span> Pass
+          </button>
+          <button
+            onClick={() => setShowFailForm(true)}
+            disabled={submitting}
+            className={`${OUTLINE_BASE} border-danger/40 bg-card text-danger hover:bg-danger-bg`}
+          >
+            <span aria-hidden>✗</span> Fail
+          </button>
+          <button
+            onClick={goNext}
+            disabled={submitting}
+            className={`${OUTLINE_BASE} border-border bg-card text-muted-foreground hover:bg-muted`}
+          >
+            <span aria-hidden>↷</span> Skip
+          </button>
+        </div>
+
+        <div className="mb-4 flex items-center justify-between">
+          {prevItem ? (
+            <Link
+              href={`/uat/${params.token}/test-case/${prevItem.id}`}
+              className="text-sm text-muted-foreground hover:text-foreground hover:underline"
+            >
+              ← Previous
+            </Link>
+          ) : (
+            <span />
+          )}
+        </div>
+
+        {showFailForm && (
+          <Card>
+            <label className="mb-2 block font-medium">Fail with a reason</label>
+            <p className="mb-2 text-sm text-muted-foreground">
+              Describe what went wrong so the team can reproduce it.
+            </p>
+            <Textarea
+              value={failReason}
+              onChange={(e) => setFailReason(e.target.value)}
+              rows={3}
+              placeholder="What went wrong?"
+              className="mb-3"
+              autoFocus
+            />
+            <label className="mb-1 block text-sm font-medium">Screenshots (optional)</label>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => setFiles(e.target.files)}
+              className="mb-3 block text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-foreground hover:file:bg-border"
+            />
+            {files && files.length > 0 && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                {Array.from(files).map((file, i) => (
+                  <img
+                    key={i}
+                    src={URL.createObjectURL(file)}
+                    alt={`Selected screenshot ${i + 1}`}
+                    className="h-16 w-16 rounded-lg border border-border object-cover"
+                  />
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Button variant="danger" onClick={() => submit('failed')} disabled={submitting}>
+                Submit Fail
+              </Button>
+              <Button variant="ghost" onClick={() => setShowFailForm(false)} disabled={submitting}>
+                Cancel
+              </Button>
+            </div>
+          </Card>
+        )}
+
+        {error && (
+          <div className="mt-4">
+            <ErrorText>{error}</ErrorText>
+          </div>
+        )}
+      </Container>
+    </>
   )
 }
