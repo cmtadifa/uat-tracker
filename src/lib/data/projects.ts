@@ -38,6 +38,20 @@ export async function createProject(input: { name: string; description: string |
   return project
 }
 
+export async function updateProjectDetails(
+  id: string,
+  updates: { name?: string; description?: string | null }
+): Promise<Project | null> {
+  const store = getDataStore()
+  const projects = await listProjects()
+  const index = projects.findIndex((p) => p.id === id)
+  if (index === -1) return null
+
+  projects[index] = { ...projects[index], ...updates }
+  await store.setJSON(INDEX_KEY, projects)
+  return projects[index]
+}
+
 export async function updateProjectInvite(
   id: string,
   action: 'regenerate' | 'revoke' | 'reactivate'

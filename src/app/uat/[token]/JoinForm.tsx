@@ -21,6 +21,7 @@ export default function JoinForm({
   testCaseCount: number
 }) {
   const [name, setName] = useState('')
+  const [role, setRole] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const router = useRouter()
@@ -32,7 +33,7 @@ export default function JoinForm({
     const res = await fetch('/api/tester/join', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, name }),
+      body: JSON.stringify({ token, name, role }),
     })
     let data: { error?: string } = {}
     try {
@@ -49,6 +50,23 @@ export default function JoinForm({
       setError(data.error ?? 'Something went wrong. Please try again.')
       return
     }
+
+    // Skip the checklist hub on entry -- go straight into the first question.
+    // The checklist remains reachable via "Back to checklist" and is where the
+    // tester lands again once every question has been answered.
+    try {
+      const listRes = await fetch(`/api/tester/checklist/${token}`, { cache: 'no-store' })
+      if (listRes.ok) {
+        const listData = await listRes.json()
+        const first = listData.testCases?.[0]
+        if (first) {
+          router.push(`/uat/${token}/test-case/${first.id}`)
+          return
+        }
+      }
+    } catch {
+      // fall through to the checklist below
+    }
     router.push(`/uat/${token}/checklist`)
   }
 
@@ -60,23 +78,32 @@ export default function JoinForm({
           <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-accent">Before you start</p>
           <h1 className="mb-2 text-xl font-semibold">{projectName}</h1>
 
-          {projectDescription && <p className="mb-3 text-sm text-muted-foreground">{projectDescription}</p>}
+          {projectDescription && (
+            <p className="mb-3 whitespace-pre-line text-sm text-muted-foreground">{projectDescription}</p>
+          )}
 
-          <div className="mb-4 flex flex-wrap gap-2">
+          <div className="mb-5 flex flex-wrap gap-2">
             <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
               {testCaseCount} test case{testCaseCount === 1 ? '' : 's'} to review
             </span>
           </div>
 
-          <p className="mb-5 text-sm text-muted-foreground">
-            You&apos;ll be given each item one at a time. Follow the steps, then mark it{' '}
-            <span className="font-medium text-success">Passed</span> or{' '}
-            <span className="font-medium text-danger">Failed</span> — if something&apos;s wrong, you can explain what
-            happened and attach screenshots. Enter your name to get started, no account needed.
-          </p>
           <form onSubmit={submit} className="flex flex-col gap-3">
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" required autoFocus />
-            <Button type="submit" disabled={submitting}>
+            <div>
+              <label className="mb-1 block text-sm font-medium">Your name</label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Jamie Cruz" required autoFocus />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">Your role (optional)</label>
+              <Input value={role} onChange={(e) => setRole(e.target.value)} placeholder="e.g. QA Engineer" />
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              You&apos;ll be given each item one at a time. Follow the steps, then mark it{' '}
+              <span className="font-medium text-success">Passed</span> or{' '}
+              <span className="font-medium text-danger">Failed</span> — if something&apos;s wrong, explain what
+              happened and attach screenshots. No account needed.
+            </p>
+            <Button type="submit" disabled={submitting} className="mt-2">
               {submitting ? 'Starting…' : 'Start Testing'}
             </Button>
           </form>

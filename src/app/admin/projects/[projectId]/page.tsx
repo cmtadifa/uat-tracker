@@ -29,6 +29,8 @@ export default function ProjectDetailPage() {
   const [editExpected, setEditExpected] = useState('')
   const [suggestionDrafts, setSuggestionDrafts] = useState<Record<string, string>>({})
   const [savingSuggestion, setSavingSuggestion] = useState<string | null>(null)
+  const [descriptionDraft, setDescriptionDraft] = useState<string | null>(null)
+  const [savingDescription, setSavingDescription] = useState(false)
 
   async function load() {
     const res = await fetch(`/api/admin/projects/${params.projectId}`)
@@ -144,6 +146,19 @@ export default function ProjectDetailPage() {
     window.location.href = `/api/admin/projects/${params.projectId}/export`
   }
 
+  async function saveDescription() {
+    if (descriptionDraft === null) return
+    setSavingDescription(true)
+    await fetch(`/api/admin/projects/${params.projectId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: descriptionDraft }),
+    })
+    setSavingDescription(false)
+    setDescriptionDraft(null)
+    load()
+  }
+
   if (!project) return <Container className="text-muted-foreground">Loading…</Container>
 
   const inviteUrl = typeof window !== 'undefined' ? `${window.location.origin}/uat/${project.inviteToken}` : ''
@@ -151,14 +166,29 @@ export default function ProjectDetailPage() {
   return (
     <Container size="xl">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">{project.name}</h1>
-          {project.description && <p className="mt-1 text-muted-foreground">{project.description}</p>}
-        </div>
+        <h1 className="text-2xl font-semibold">{project.name}</h1>
         <Button variant="secondary" onClick={exportResults}>
           ⬇ Export Results (CSV)
         </Button>
       </div>
+
+      <Card className="mb-6">
+        <h2 className="mb-1 font-medium">Instructions for testers</h2>
+        <p className="mb-2 text-sm text-muted-foreground">
+          Shown to testers on the join page before they start. Use it to explain what&apos;s being tested, how the
+          project is organized, or anything else they should know upfront.
+        </p>
+        <Textarea
+          value={descriptionDraft ?? project.description ?? ''}
+          onChange={(e) => setDescriptionDraft(e.target.value)}
+          placeholder="e.g. This covers the new checkout flow. Test with any US ZIP code; use card 4242 4242 4242 4242 for payment steps."
+          rows={3}
+          className="mb-2"
+        />
+        <Button variant="secondary" onClick={saveDescription} disabled={savingDescription || descriptionDraft === null}>
+          {savingDescription ? 'Saving…' : 'Save Instructions'}
+        </Button>
+      </Card>
 
       <Card className="mb-6">
         <h2 className="mb-2 font-medium">Invite Link</h2>
@@ -194,7 +224,8 @@ export default function ProjectDetailPage() {
             <ul className="flex flex-wrap gap-2">
               {runs.map((run) => (
                 <li key={run.id} className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-                  {run.testerName} · {new Date(run.startedAt).toLocaleDateString()}
+                  {run.testerName}
+                  {run.testerRole && ` (${run.testerRole})`} · {new Date(run.startedAt).toLocaleDateString()}
                 </li>
               ))}
             </ul>
@@ -273,7 +304,8 @@ export default function ProjectDetailPage() {
                           <div className="flex flex-wrap items-center gap-2">
                             <StatusBadge status={result.status} />
                             <span className="text-xs text-muted-foreground">
-                              {run.testerName} · {new Date(result.updatedAt).toLocaleString()}
+                              {run.testerName}
+                              {run.testerRole && ` (${run.testerRole})`} · {new Date(result.updatedAt).toLocaleString()}
                             </span>
                           </div>
                           {result.status === 'failed' && result.failReason && (

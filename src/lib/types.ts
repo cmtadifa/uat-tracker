@@ -12,6 +12,7 @@ export interface Project {
 export interface Run {
   id: string
   testerName: string
+  testerRole: string | null
   startedAt: string
 }
 

@@ -34,7 +34,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const rows: string[] = []
   for (const tc of testCases) {
     if (runs.length === 0) {
-      rows.push(csvRow([tc.title, tc.steps.join(' | '), tc.expectedResult, 'Not Started', '', '', tc.suggestion ?? '', '']))
+      rows.push(
+        csvRow([tc.title, tc.steps.join(' | '), tc.expectedResult, 'Not Started', '', '', '', tc.suggestion ?? '', ''])
+      )
       continue
     }
     for (const run of runs) {
@@ -46,6 +48,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
           tc.expectedResult,
           STATUS_LABELS[result?.status ?? 'not_started'] ?? 'Not Started',
           run.testerName,
+          run.testerRole ?? '',
           result?.failReason ?? '',
           tc.suggestion ?? '',
           result?.updatedAt ? new Date(result.updatedAt).toLocaleString() : '',
@@ -54,7 +57,17 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     }
   }
 
-  const header = csvRow(['Question', 'Steps', 'Expected Result', 'Status', 'Tested By', 'Fail Reason', 'Suggestion', 'Last Updated'])
+  const header = csvRow([
+    'Question',
+    'Steps',
+    'Expected Result',
+    'Status',
+    'Tested By',
+    'Tester Role',
+    'Fail Reason',
+    'Suggestion',
+    'Last Updated',
+  ])
   const csv = header + rows.join('')
 
   const slug = project.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'uat-results'

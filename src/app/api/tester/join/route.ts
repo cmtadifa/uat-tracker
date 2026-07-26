@@ -13,15 +13,18 @@ export async function POST(request: Request) {
   }
   const token = String((body as { token?: unknown })?.token ?? '')
   const name = String((body as { name?: unknown })?.name ?? '').trim()
+  const roleRaw = (body as { role?: unknown })?.role
+  const role = typeof roleRaw === 'string' ? roleRaw.trim() : ''
   if (!name) return NextResponse.json({ error: 'Name is required.' }, { status: 400 })
   if (name.length > 100) return NextResponse.json({ error: 'Name is too long.' }, { status: 400 })
+  if (role.length > 100) return NextResponse.json({ error: 'Role is too long.' }, { status: 400 })
 
   const project = await findProjectByInviteToken(token)
   if (!project || !project.inviteActive) {
     return NextResponse.json({ error: 'This UAT link is no longer active.' }, { status: 410 })
   }
 
-  const run = await createRun(project.id, name)
+  const run = await createRun(project.id, name, role || null)
 
   const sessionToken = signTesterSession({ projectToken: token, runId: run.id, testerName: name, iat: Date.now() })
   const cookieStore = await cookies()
