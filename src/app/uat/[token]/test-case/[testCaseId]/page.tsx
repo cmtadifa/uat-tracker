@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/Input'
 import ErrorText from '@/components/ui/ErrorText'
 import TesterHeader from '@/components/TesterHeader'
 import StepProgress from '@/components/StepProgress'
+import { getLocalOverrides, setLocalOverride } from '@/lib/tester/localOverrides'
 
 interface TestCaseDetail {
   id: string
@@ -59,7 +60,12 @@ export default function TestCaseDetailPage() {
       setFiles(null)
       if (listRes.ok) {
         const listData = await listRes.json()
-        setChecklist(listData.testCases)
+        const overrides = getLocalOverrides(params.token)
+        const merged: ChecklistItem[] = listData.testCases.map((item: ChecklistItem) => ({
+          ...item,
+          status: overrides[item.id] ?? item.status,
+        }))
+        setChecklist(merged)
         setProjectName(listData.projectName)
         setTesterName(listData.testerName)
       }
@@ -106,6 +112,12 @@ export default function TestCaseDetailPage() {
         return
       }
     }
+
+    // The Blobs store doesn't guarantee this write is visible to the very
+    // next read (e.g. on the next question's page). Record it locally so
+    // our own stepper/checklist trust what we just submitted immediately,
+    // rather than waiting for the store to catch up.
+    setLocalOverride(params.token, params.testCaseId, status)
 
     setSubmitting(false)
     goNext()

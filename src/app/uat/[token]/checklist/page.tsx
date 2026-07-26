@@ -8,6 +8,7 @@ import Card from '@/components/ui/Card'
 import StatusBadge from '@/components/ui/Badge'
 import ProgressBar from '@/components/ui/ProgressBar'
 import TesterHeader from '@/components/TesterHeader'
+import { getLocalOverrides } from '@/lib/tester/localOverrides'
 
 interface ChecklistItem {
   id: string
@@ -31,9 +32,14 @@ export default function ChecklistPage() {
           setError(data.error)
           return
         }
+        const overrides = getLocalOverrides(params.token)
+        const merged: ChecklistItem[] = data.testCases.map((item: ChecklistItem) => ({
+          ...item,
+          status: overrides[item.id] ?? item.status,
+        }))
         setProjectName(data.projectName)
         setTesterName(data.testerName)
-        setItems(data.testCases)
+        setItems(merged)
         setLoaded(true)
       })
     }
